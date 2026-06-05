@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
-use Aws\DynamoDb\DynamoDbClient;
-use Aws\Exception\AwsException;
 
 class DashboardController extends Controller
 {
