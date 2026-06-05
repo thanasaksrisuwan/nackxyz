@@ -1,16 +1,28 @@
 name: Deploy to AWS Lambda (Always Free Tier)
 
+# GitHub Free Tier:
+#   - Public repo  → Unlimited Actions minutes (FREE forever) ✅
+#   - Private repo → 2,000 minutes/month free
+# This repo is PUBLIC so minutes are unlimited.
+# We still optimize to keep each run fast (~3-4 min target).
+
 on:
   push:
     branches:
       - main
+    # Only trigger when relevant files change — skip docs/readme-only commits
+    paths-ignore:
+      - '**.md'
+      - '.cursorrules'
+      - '.editorconfig'
 
 jobs:
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # Linux = 1x minute multiplier (cheapest runner)
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,9 +31,35 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, bcmath
+          # Cache PHP extensions to speed up setup
+          coverage: none
+          tools: composer:v2
+
+      # Cache composer vendor directory — saves ~60s on every run
+      - name: Cache Composer Dependencies
+        id: composer-cache
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
 
       - name: Install Composer Dependencies
+        if: steps.composer-cache.outputs.cache-hit != 'true'
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
+
+      # When cache hits, still run autoload dump to ensure class maps are fresh
+      - name: Optimize Autoloader (cache hit)
+        if: steps.composer-cache.outputs.cache-hit == 'true'
+        run: composer dump-autoload --optimize --no-dev --no-interaction
+
+      # Cache serverless + node_modules to save ~30s
+      - name: Cache Serverless node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: serverless-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: serverless-npm-
 
       - name: Install Serverless Framework
         run: npm install -g serverless@3
