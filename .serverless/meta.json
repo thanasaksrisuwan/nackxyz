@@ -158,7 +158,7 @@
       "logs"
     ],
     "options": {
-      "limit": "5",
+      "limit": "10",
       "function": "web"
     },
     "serviceProviderAwsCfStackId": null,
