@@ -14,7 +14,7 @@ class TradeBot extends Command
     protected $description = 'Execute the Binance TH RSI trading bot logic securely';
 
     private function getBaseUrl(): string {
-        return env('BINANCE_BASE_URL', 'https://api.binance.com');
+        return env('BINANCE_BASE_URL', 'https://api.binance.th');
     }
     
     private $targetBudgetUsdt = 15.0; // Min notional on Binance is usually $10. Use $15 to be safe.
@@ -81,7 +81,7 @@ class TradeBot extends Command
                     return;
                 }
 
-                $tradeSuccess = $this->executeTestTrade($symbol, $action, $quantity);
+                $tradeSuccess = $this->executeLiveTrade($symbol, $action, $quantity);
                 
                 // 6. Save to DynamoDB & Send Telegram Alert
                 if ($tradeSuccess) {
@@ -118,7 +118,7 @@ class TradeBot extends Command
 
         $response = Http::withHeaders([
             'X-MBX-APIKEY' => $apiKey
-        ])->get("{$this->getBaseUrl()}/api/v3/account", [
+        ])->get("{$this->getBaseUrl()}/api/v1/accountV2", [
             'recvWindow' => 10000,
             'timestamp' => $timestamp,
             'signature' => $signature
@@ -135,7 +135,7 @@ class TradeBot extends Command
 
     private function fetchBinanceClosingPrices(string $symbol, string $interval, int $limit): array
     {
-        $response = Http::get("{$this->getBaseUrl()}/api/v3/klines", [
+        $response = Http::get("{$this->getBaseUrl()}/api/v1/klines", [
             'symbol' => $symbol,
             'interval' => $interval,
             'limit' => $limit
@@ -184,7 +184,8 @@ class TradeBot extends Command
         return 100.0 - (100.0 / (1.0 + $rs));
     }
 
-    private function executeTestTrade(string $symbol, string $action, float $quantity): bool
+    // Execute a live trade on Binance TH
+    private function executeLiveTrade(string $symbol, string $side, float $quantity): bool
     {
         $apiKey = env('BINANCE_API_KEY');
         $apiSecret = env('BINANCE_API_SECRET');
@@ -207,7 +208,7 @@ class TradeBot extends Command
 
         $response = Http::withHeaders([
             'X-MBX-APIKEY' => $apiKey
-        ])->post("{$this->getBaseUrl()}/api/v3/order/test", $params);
+        ])->post("{$this->getBaseUrl()}/api/v1/order", $params);
 
         if ($response->successful()) {
             return true;
