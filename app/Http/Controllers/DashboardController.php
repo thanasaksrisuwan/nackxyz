@@ -74,9 +74,11 @@ class DashboardController extends Controller
                 ]);
                 if ($klinesResp->successful()) {
                     $klines = $klinesResp->json();
-                    if (count($klines) >= 15) {
-                        $closes = array_map(fn($k) => (float)$k[4], $klines);
+                    if (is_array($klines) && count($klines) >= 15) {
+                        $closes = array_map(fn($k) => (float)($k[4] ?? 0), $klines);
                         $rsi = $this->calculateRSI($closes, 14);
+                    } else {
+                        $klines = [];
                     }
                 }
             } catch (\Exception $e) {}
@@ -97,35 +99,37 @@ class DashboardController extends Controller
                 if ($tradesResp->successful()) {
                     $items = $tradesResp->json();
                     
-                    // Sort descending by time
-                    usort($items, function($a, $b) {
-                        return $b['time'] <=> $a['time'];
-                    });
-                    
-                    $processedTrades = [];
-                    foreach (array_slice($items, 0, 15) as $item) {
-                        $qty = (float)$item['qty'];
-                        $prc = (float)$item['price'];
-                        $grossValue = $qty * $prc;
-
-                        $commission = (float)($item['commission'] ?? 0.0);
-                        $commissionAsset = $item['commissionAsset'] ?? 'USDT';
+                    if (is_array($items) && !isset($items['code'])) {
+                        // Sort descending by time
+                        usort($items, function($a, $b) {
+                            return ($b['time'] ?? 0) <=> ($a['time'] ?? 0);
+                        });
                         
-                        $feeInUsdt = 0.0;
-                        if ($commissionAsset === 'USDT') {
-                            $feeInUsdt = $commission;
-                        } elseif ($commissionAsset === 'WLD') {
-                            $feeInUsdt = $commission * $prc;
-                        } elseif ($commissionAsset === 'BNB') {
-                            // Rough estimation if BNB is around $600
-                            $feeInUsdt = $commission * 600.0;
-                        }
+                        $processedTrades = [];
+                        foreach (array_slice($items, 0, 15) as $item) {
+                            $qty = (float)($item['qty'] ?? 0);
+                            $prc = (float)($item['price'] ?? 0);
+                            $grossValue = $qty * $prc;
 
-                        $item['feeUsdt'] = $feeInUsdt;
-                        $item['netValue'] = $item['isBuyer'] ? ($grossValue + $feeInUsdt) : ($grossValue - $feeInUsdt);
-                        $processedTrades[] = $item;
+                            $commission = (float)($item['commission'] ?? 0.0);
+                            $commissionAsset = $item['commissionAsset'] ?? 'USDT';
+                            
+                            $feeInUsdt = 0.0;
+                            if ($commissionAsset === 'USDT') {
+                                $feeInUsdt = $commission;
+                            } elseif ($commissionAsset === 'WLD') {
+                                $feeInUsdt = $commission * $prc;
+                            } elseif ($commissionAsset === 'BNB') {
+                                // Rough estimation if BNB is around $600
+                                $feeInUsdt = $commission * 600.0;
+                            }
+
+                            $item['feeUsdt'] = $feeInUsdt;
+                            $item['netValue'] = isset($item['isBuyer']) && $item['isBuyer'] ? ($grossValue + $feeInUsdt) : ($grossValue - $feeInUsdt);
+                            $processedTrades[] = $item;
+                        }
+                        $trades = $processedTrades;
                     }
-                    $trades = $processedTrades;
                 }
             } catch (\Exception $e) {
                 // Ignore
@@ -135,10 +139,10 @@ class DashboardController extends Controller
         // Calculate total portfolio value roughly
         $totalUsdtValue = 0;
         foreach ($balances as &$b) {
-            $amt = (float)$b['free'] + (float)$b['locked'];
-            if ($b['asset'] === 'USDT') {
+            $amt = (float)($b['free'] ?? 0) + (float)($b['locked'] ?? 0);
+            if (($b['asset'] ?? '') === 'USDT') {
                 $b['usdtValue'] = $amt;
-            } elseif ($b['asset'] === 'WLD') {
+            } elseif (($b['asset'] ?? '') === 'WLD') {
                 $b['usdtValue'] = $amt * $wldPrice;
             } else {
                 $b['usdtValue'] = 0; // Other coins not tracked
@@ -152,15 +156,16 @@ class DashboardController extends Controller
         );
         
         // Pass klines array specifically for the frontend chart
+        $safeKlines = is_array($klines ?? []) ? ($klines ?? []) : [];
         $data['klinesChart'] = array_map(function($k) {
             return [
-                'time' => $k[0] / 1000,
-                'open' => (float)$k[1],
-                'high' => (float)$k[2],
-                'low' => (float)$k[3],
-                'close' => (float)$k[4],
+                'time' => ($k[0] ?? 0) / 1000,
+                'open' => (float)($k[1] ?? 0),
+                'high' => (float)($k[2] ?? 0),
+                'low' => (float)($k[3] ?? 0),
+                'close' => (float)($k[4] ?? 0),
             ];
-        }, $klines ?? []);
+        }, $safeKlines);
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json($data);
