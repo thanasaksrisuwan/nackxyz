@@ -40,6 +40,8 @@ class DashboardTest extends TestCase
                     'orderId' => 67890,
                     'price' => '2.40',
                     'qty' => '10.00',
+                    'commission' => '0.024',
+                    'commissionAsset' => 'USDT',
                     'time' => 1715000000000,
                     'isBuyer' => true
                 ]

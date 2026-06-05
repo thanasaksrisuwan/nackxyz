@@ -164,7 +164,7 @@
                                     <th class="py-3 px-2">Action</th>
                                     <th class="py-3 px-2 text-right">Price</th>
                                     <th class="py-3 px-2 text-right">Qty</th>
-                                    <th class="py-3 px-2 text-right">Value (USDT)</th>
+                                    <th class="py-3 px-2 text-right">Net Value (USDT)</th>
                                 </tr>
                             </thead>
                             <tbody id="trades-container">
@@ -277,7 +277,8 @@
                     let action = isBuy ? 'BUY' : 'SELL';
                     let qty = parseFloat(t.qty).toFixed(2);
                     let price = parseFloat(t.price).toFixed(4);
-                    let val = (qty * price).toFixed(2);
+                    let netVal = parseFloat(t.netValue || 0).toFixed(2);
+                    let fee = parseFloat(t.feeUsdt || 0).toFixed(4);
                     
                     // Simple logic: If we sell, count as win or loss based on average, just randomize for demo if no cost basis
                     if (!isBuy && index % 2 === 0) wins++; 
@@ -288,7 +289,10 @@
                             <td class="py-3 px-2 font-bold ${isBuy ? 'text-neon-green' : 'text-neon-red'}">${action}</td>
                             <td class="py-3 px-2 text-right">${price}</td>
                             <td class="py-3 px-2 text-right">${qty}</td>
-                            <td class="py-3 px-2 text-right">${val}</td>
+                            <td class="py-3 px-2 text-right">
+                                ${netVal}
+                                <div class="text-[10px] text-slate-500">Fee: ${fee}</div>
+                            </td>
                         </tr>
                     `;
                 });

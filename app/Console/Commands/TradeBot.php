@@ -59,7 +59,24 @@ class TradeBot extends Command
                 $action = 'BUY';
             } elseif ($rsi > 70 && $isHoldingPosition) {
                 // Overbought & Holding -> Sell
-                $action = 'SELL';
+                
+                // Prevent Phantom Profit (กำไรทิพย์)
+                $averageEntryPrice = $this->getLastBuyPrice($symbol);
+                $minProfitThreshold = 1.005; // 0.5% buffer for 0.2% round-trip fees
+                
+                if ($averageEntryPrice > 0) {
+                    $expectedProfitPrice = $averageEntryPrice * $minProfitThreshold;
+                    
+                    if ($currentPrice >= $expectedProfitPrice) {
+                        $action = 'SELL';
+                    } else {
+                        Log::info("TradeBot: RSI Overbought but current price ({$currentPrice}) < expected profit target ({$expectedProfitPrice}). HOLDING.");
+                        $action = 'HOLD';
+                    }
+                } else {
+                    // Fallback if no buy history found, just sell
+                    $action = 'SELL';
+                }
             }
 
             Log::info("TradeBot: Decision made -> {$action}");
@@ -151,6 +168,45 @@ class TradeBot extends Command
         }
 
         throw new \Exception("Failed to fetch klines");
+    }
+
+    private function getLastBuyPrice(string $symbol): float
+    {
+        $apiKey = env('BINANCE_API_KEY');
+        $apiSecret = env('BINANCE_API_SECRET');
+        
+        if (!$apiKey || !$apiSecret) return 0.0;
+
+        $timestamp = (int) (microtime(true) * 1000);
+        $queryString = "symbol={$symbol}&limit=50&recvWindow=10000&timestamp={$timestamp}";
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        $response = Http::withHeaders([
+            'X-MBX-APIKEY' => $apiKey
+        ])->get("{$this->getBaseUrl()}/api/v1/userTrades", [
+            'symbol' => $symbol,
+            'limit' => 50,
+            'recvWindow' => 10000,
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+
+        if ($response->successful()) {
+            $trades = $response->json();
+            // Sort trades by newest first
+            usort($trades, function($a, $b) {
+                return $b['time'] <=> $a['time'];
+            });
+            
+            // Find the most recent BUY trade
+            foreach ($trades as $trade) {
+                if ($trade['isBuyer']) {
+                    return (float) $trade['price'];
+                }
+            }
+        }
+        
+        return 0.0;
     }
 
     private function calculateRSI(array $closes, int $period = 14): float

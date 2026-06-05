@@ -98,22 +98,36 @@ class DashboardController extends Controller
 
                 if ($tradesResp->successful()) {
                     $items = $tradesResp->json();
+                    
+                    // Sort descending by time
                     usort($items, function($a, $b) {
                         return $b['time'] <=> $a['time'];
                     });
-                    $items = array_slice($items, 0, 15);
-
-                    foreach ($items as $item) {
+                    
+                    $processedTrades = [];
+                    foreach (array_slice($items, 0, 15) as $item) {
                         $qty = (float)$item['qty'];
                         $prc = (float)$item['price'];
-                        $trades[] = [
-                            'time' => date('M d, H:i:s', (int)($item['time'] / 1000)),
-                            'action' => $item['isBuyer'] ? 'BUY' : 'SELL',
-                            'qty' => $qty,
-                            'price' => $prc,
-                            'value' => $qty * $prc
-                        ];
+                        $grossValue = $qty * $prc;
+
+                        $commission = (float)($item['commission'] ?? 0.0);
+                        $commissionAsset = $item['commissionAsset'] ?? 'USDT';
+                        
+                        $feeInUsdt = 0.0;
+                        if ($commissionAsset === 'USDT') {
+                            $feeInUsdt = $commission;
+                        } elseif ($commissionAsset === 'WLD') {
+                            $feeInUsdt = $commission * $prc;
+                        } elseif ($commissionAsset === 'BNB') {
+                            // Rough estimation if BNB is around $600
+                            $feeInUsdt = $commission * 600.0;
+                        }
+
+                        $item['feeUsdt'] = $feeInUsdt;
+                        $item['netValue'] = $item['isBuyer'] ? ($grossValue + $feeInUsdt) : ($grossValue - $feeInUsdt);
+                        $processedTrades[] = $item;
                     }
+                    $trades = $processedTrades;
                 }
             } catch (\Exception $e) {
                 // Ignore
