@@ -1,58 +1,76 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 📈 Serverless Binance TH Trading Bot
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 🎯 Project Overview
+This project is an automated cryptocurrency trading bot specifically designed for **Binance TH**. It is built with a heavy emphasis on **Security (Enterprise Best Practices)** and **Cost-Efficiency (100% AWS Free Tier)**. 
 
-## About Laravel
+The system operates autonomously in the cloud, fetching real-time market data, evaluating custom trading strategies, executing secure trades, and notifying the owner—all without incurring monthly server costs.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🏗️ Architecture & Tech Stack
+The project abandons traditional 24/7 servers (like EC2 or DigitalOcean) in favor of a modern **Event-Driven Serverless Architecture**.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Core Framework**: Laravel 11 (PHP 8.3)
+- **Cloud Provider**: AWS (Amazon Web Services)
+- **Serverless Engine**: [Bref](https://bref.sh/) + Serverless Framework (v3)
+- **Compute**: AWS Lambda (Executes code only when triggered, zero idle cost)
+- **Database**: Amazon DynamoDB (Always Free NoSQL database up to 25GB)
+- **Task Scheduler**: AWS EventBridge (Triggers the bot every 1 minute)
+- **CI/CD**: GitHub Actions (Automated deployments)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🔐 Security Standards & Best Practices
+Security is the highest priority in this architecture, designed to completely mitigate the risk of stolen funds or compromised servers:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+1. **Zero Hardcoded Secrets**: `BINANCE_API_KEY`, `BINANCE_API_SECRET`, Telegram tokens, and Admin credentials are strictly managed via **GitHub Secrets**. They are never committed to the Git repository.
+2. **Ephemeral Compute**: Because it runs on AWS Lambda, there is no physical or virtual server for hackers to SSH into. The environment is destroyed and recreated constantly.
+3. **IAM Least Privilege**: The AWS Lambda execution role is strictly scoped to only allow reading and writing to the specific DynamoDB `TradesTable` and nothing else.
+4. **Cryptographic Signing**: All Binance API requests are signed dynamically using HMAC SHA-256 with timestamp validation to prevent Replay Attacks.
+5. **Secure Dashboard Access**: The public-facing endpoint is protected by Basic Authentication. Credentials are dynamically injected at deploy-time via GitHub Secrets.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 🚀 Features Implemented
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Advanced Trading Brain (`TradeBot.php`)
+- An artisan command (`trade:run`) serves as the bot's brain.
+- Automatically invoked every 1 minute by AWS EventBridge.
+- Currently tracking the **WLDUSDT** trading pair.
+- **RSI Algorithm**: Fetches 15-minute K-lines (last 100 candles), applies Wilder's Smoothing Method to calculate the Relative Strength Index (RSI).
+- **Position State Constraints**: Checks live account balances to prevent double-buying spam. Only buys if holding < $5 worth of WLD.
+- **Dynamic Quantity**: Automatically calculates the amount of WLD to buy based on a fixed $15 USDT budget to seamlessly bypass the Binance `MIN_NOTIONAL` filter.
+- **Clock Drift Protection**: Includes a `recvWindow` of 10000ms to prevent `-1021 INVALID_TIMESTAMP` rejections from Binance.
 
-```bash
-composer require laravel/boost --dev
+### 2. Live Secure Dashboard
+- A premium, glassmorphism-styled web interface accessible at the root URL.
+- Protected by HTTP Basic Authentication middleware.
+- Displays real-time `WLDUSDT` prices and enumerates all non-zero asset balances directly from the Binance TH account.
 
-php artisan boost:install
-```
+### 3. Immutable Trade Logging
+- All successful trade decisions (Action, Price, Quantity, Symbol, Timestamp) are permanently recorded in an **Amazon DynamoDB** table (`TradesTable`) for performance tracking and auditing.
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 4. Real-Time Telegram Notifications
+- Implemented an ultra-low-latency alert system. Upon any successful trade execution, a formatted HTML alert is fired instantly to the owner's private Telegram chat using the Telegram Bot API.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🔧 Setup & Deployment
+This project uses GitHub Actions for CI/CD. To deploy to your own AWS account, configure the following secrets in your GitHub Repository:
 
-## Code of Conduct
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `BINANCE_API_KEY`
+- `BINANCE_API_SECRET`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+- `ADMIN_USERNAME` (For Dashboard Login)
+- `ADMIN_PASSWORD` (For Dashboard Login)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Pushing to the `main` branch will automatically trigger the deployment to AWS Lambda.
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## ⏭️ Roadmap
+- [ ] Monitor Test Orders (`/api/v3/order/test`) to validate RSI threshold accuracy.
+- [ ] Switch to Production Mode by removing the `/test` endpoint from `TradeBot.php`.
