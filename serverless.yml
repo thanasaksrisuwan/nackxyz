@@ -5,12 +5,25 @@ provider:
     # The AWS region in which to deploy
     region: ap-southeast-1
     stage: dev
+    iam:
+        role:
+            statements:
+                - Effect: Allow
+                  Action:
+                      - dynamodb:Query
+                      - dynamodb:Scan
+                      - dynamodb:GetItem
+                      - dynamodb:PutItem
+                      - dynamodb:UpdateItem
+                      - dynamodb:DeleteItem
+                  Resource: "arn:aws:dynamodb:${aws:region}:*:table/${self:custom.tableName}"
     environment:
         # App environment variables
         APP_ENV: production
         APP_DEBUG: 'false'
         APP_KEY: ${env:APP_KEY}
         MCP_TOKEN: ${env:MCP_TOKEN, 'mcp-secret-lab-token'}
+        DYNAMODB_TABLE: ${self:custom.tableName}
         # Log to stderr so CloudWatch can capture it
         LOG_CHANNEL: stderr
         # Session and cache must be serverless friendly (array, cookie, or dynamo)
@@ -43,6 +56,27 @@ functions:
         handler: artisan
         runtime: php-83-console
         timeout: 120
+        events:
+            - schedule:
+                rate: rate(1 minute)
+                input: '"trade:run"'
+
+custom:
+    tableName: ${self:service}-trades-${sls:stage}
+
+resources:
+    Resources:
+        TradesTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: ${self:custom.tableName}
+                AttributeDefinitions:
+                    - AttributeName: id
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: id
+                      KeyType: HASH
+                BillingMode: PAY_PER_REQUEST
 
 plugins:
     - ./vendor/bref/bref
