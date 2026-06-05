@@ -66,6 +66,27 @@ class DashboardTest extends TestCase
         $this->assertEquals(225.0, $response->viewData('totalUsdtValue'));
     }
 
+    public function test_save_config_accepts_risk_circuit_breaker_fields()
+    {
+        putenv('DYNAMODB_TABLE=');
+
+        $this->withoutMiddleware(\App\Http\Middleware\BasicAdminAuth::class);
+
+        $response = $this->postJson('/config', [
+            'rsi_buy' => 30,
+            'rsi_sell' => 70,
+            'trade_amount_usdt' => 15,
+            'use_ema_filter' => true,
+            'symbol' => 'BTCUSDT',
+            'timeframe' => '1h',
+            'daily_max_loss_usdt' => 5,
+            'drawdown_limit_pct' => 10,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => false]);
+    }
+
     private function generateMockKlines()
     {
         $klines = [];

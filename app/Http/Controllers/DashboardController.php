@@ -15,7 +15,12 @@ class DashboardController extends Controller
     public function index()
     {
         $botConfig = BotConfig::get();
-        
+        $botState = BotConfig::getState();
+
+        // --- Read active symbol/timeframe from saved config ---
+        $activeSymbol  = $botConfig['symbol']    ?? 'WLDUSDT';
+        $timeframe     = $botConfig['timeframe']  ?? '15m';
+
         $baseUrl = env('BINANCE_BASE_URL', 'https://api.binance.th');
         $apiKey = env('BINANCE_API_KEY');
         $apiSecret = env('BINANCE_API_SECRET');
@@ -24,8 +29,9 @@ class DashboardController extends Controller
         $wldPrice = 0;
         $priceChange24h = 0;
         $priceChangePercent = 0;
-        $rsi = 50; // default middle
+        $rsi = 50;
         $trades = [];
+        $klines = [];
 
         if (!$apiKey || !$apiSecret) {
             $error = 'API Keys missing. Please configure BINANCE_API_KEY and BINANCE_API_SECRET.';
@@ -57,10 +63,10 @@ class DashboardController extends Controller
                 $error = 'Exception: ' . $e->getMessage();
             }
 
-            // 2. Fetch WLDUSDT 24h Ticker
+            // 2. Fetch active symbol 24h Ticker
             try {
                 $tickerResp = Http::get("{$baseUrl}/api/v1/ticker/24hr", [
-                    'symbol' => 'WLDUSDT'
+                    'symbol' => $activeSymbol
                 ]);
                 if ($tickerResp->successful()) {
                     $wldPrice = (float) $tickerResp->json('lastPrice');
@@ -69,12 +75,12 @@ class DashboardController extends Controller
                 }
             } catch (\Exception $e) { }
 
-            // 3. Calculate RSI(14)
+            // 3. Calculate RSI(14) using configured symbol & timeframe
             try {
                 $klinesResp = Http::get("{$baseUrl}/api/v1/klines", [
-                    'symbol' => 'WLDUSDT',
-                    'interval' => '15m',
-                    'limit' => 100
+                    'symbol'   => $activeSymbol,
+                    'interval' => $timeframe,
+                    'limit'    => 100
                 ]);
                 if ($klinesResp->successful()) {
                     $klines = $klinesResp->json();
@@ -87,15 +93,15 @@ class DashboardController extends Controller
                 }
             } catch (\Exception $e) {}
 
-            // 4. Fetch Trade History strictly from Binance API (Single Source of Truth)
+            // 4. Fetch Trade History from Binance API (Single Source of Truth)
             try {
-                $queryStringTrades = "symbol=WLDUSDT&timestamp={$timestamp}";
+                $queryStringTrades = "symbol={$activeSymbol}&timestamp={$timestamp}";
                 $signatureTrades = hash_hmac('sha256', $queryStringTrades, $apiSecret);
 
                 $tradesResp = Http::withHeaders([
                     'X-MBX-APIKEY' => $apiKey
                 ])->get("{$baseUrl}/api/v1/userTrades", [
-                    'symbol' => 'WLDUSDT',
+                    'symbol'    => $activeSymbol,
                     'timestamp' => $timestamp,
                     'signature' => $signatureTrades
                 ]);
@@ -141,32 +147,35 @@ class DashboardController extends Controller
         }
 
         // Calculate total portfolio value roughly
+        // Derive base asset from active symbol (e.g. BTCUSDT -> BTC, WLDUSDT -> WLD)
+        $baseAsset = str_replace('USDT', '', $activeSymbol);
         $totalUsdtValue = 0;
         foreach ($balances as &$b) {
             $amt = (float)($b['free'] ?? 0) + (float)($b['locked'] ?? 0);
             if (($b['asset'] ?? '') === 'USDT') {
                 $b['usdtValue'] = $amt;
-            } elseif (($b['asset'] ?? '') === 'WLD') {
+            } elseif (($b['asset'] ?? '') === $baseAsset) {
                 $b['usdtValue'] = $amt * $wldPrice;
             } else {
-                $b['usdtValue'] = 0; // Other coins not tracked
+                $b['usdtValue'] = 0;
             }
             $totalUsdtValue += $b['usdtValue'];
         }
 
         $data = compact(
             'balances', 'wldPrice', 'priceChange24h', 'priceChangePercent',
-            'rsi', 'trades', 'totalUsdtValue', 'error', 'botConfig'
+            'rsi', 'trades', 'totalUsdtValue', 'error', 'botConfig', 'botState',
+            'activeSymbol', 'timeframe'
         );
-        
+
         // Pass klines array specifically for the frontend chart
-        $safeKlines = is_array($klines ?? []) ? ($klines ?? []) : [];
+        $safeKlines = is_array($klines) ? $klines : [];
         $data['klinesChart'] = array_map(function($k) {
             return [
-                'time' => ($k[0] ?? 0) / 1000,
-                'open' => (float)($k[1] ?? 0),
-                'high' => (float)($k[2] ?? 0),
-                'low' => (float)($k[3] ?? 0),
+                'time'  => ($k[0] ?? 0) / 1000,
+                'open'  => (float)($k[1] ?? 0),
+                'high'  => (float)($k[2] ?? 0),
+                'low'   => (float)($k[3] ?? 0),
                 'close' => (float)($k[4] ?? 0),
             ];
         }, $safeKlines);
@@ -180,18 +189,33 @@ class DashboardController extends Controller
 
     public function saveConfig(Request $request)
     {
+        // Allowed symbols on Binance TH
+        $allowedSymbols    = ['WLDUSDT', 'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOTUSDT'];
+        $allowedTimeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
+
         $validated = $request->validate([
-            'rsi_buy' => 'required|numeric|min:10|max:50',
-            'rsi_sell' => 'required|numeric|min:50|max:90',
-            'trade_amount_usdt' => 'required|numeric|min:10|max:1000',
-            'use_ema_filter' => 'required|boolean',
+            'rsi_buy'            => 'required|numeric|min:10|max:50',
+            'rsi_sell'           => 'required|numeric|min:50|max:90',
+            'trade_amount_usdt'  => 'required|numeric|min:10|max:1000',
+            'use_ema_filter'     => 'required|boolean',
+            'symbol'             => 'required|string|in:' . implode(',', $allowedSymbols),
+            'timeframe'          => 'required|string|in:' . implode(',', $allowedTimeframes),
+            'daily_max_loss_usdt'=> 'required|numeric|min:1|max:100000',
+            'drawdown_limit_pct' => 'required|numeric|min:1|max:80',
+            'available_symbols'  => 'sometimes|array',
+            'available_symbols.*'=> 'string|in:' . implode(',', $allowedSymbols),
         ]);
 
         $success = BotConfig::set([
-            'rsi_buy' => (float) $validated['rsi_buy'],
-            'rsi_sell' => (float) $validated['rsi_sell'],
+            'rsi_buy'           => (float) $validated['rsi_buy'],
+            'rsi_sell'          => (float) $validated['rsi_sell'],
             'trade_amount_usdt' => (float) $validated['trade_amount_usdt'],
-            'use_ema_filter' => (bool) $validated['use_ema_filter'],
+            'use_ema_filter'    => (bool) $validated['use_ema_filter'],
+            'symbol'            => $validated['symbol'],
+            'timeframe'         => $validated['timeframe'],
+            'daily_max_loss_usdt' => (float) $validated['daily_max_loss_usdt'],
+            'drawdown_limit_pct' => (float) $validated['drawdown_limit_pct'],
+            'available_symbols' => $validated['available_symbols'] ?? ['WLDUSDT', 'BTCUSDT'],
         ]);
 
         return response()->json(['success' => $success]);

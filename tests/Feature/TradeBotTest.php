@@ -55,6 +55,28 @@ class TradeBotTest extends TestCase
         });
     }
 
+    public function test_bot_does_not_trade_when_balances_are_unavailable()
+    {
+        putenv('BINANCE_API_KEY=testkey');
+        putenv('BINANCE_API_SECRET=testsecret');
+        putenv('DYNAMODB_TABLE=');
+
+        Http::fake([
+            '*api/v1/accountV2*' => Http::response(['code' => -1, 'msg' => 'account unavailable'], 500),
+            '*api/v1/klines*' => Http::response($this->generateMockKlines(oversold: true), 200),
+            '*api/v1/order*' => Http::response([
+                'orderId' => 12345,
+                'status' => 'FILLED'
+            ], 200),
+        ]);
+
+        $this->artisan('trade:run')->assertSuccessful();
+
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), '/api/v1/order');
+        });
+    }
+
     private function generateMockKlines(bool $oversold)
     {
         $klines = [];

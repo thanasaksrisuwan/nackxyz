@@ -126,6 +126,37 @@
                     </div>
                 </div>
 
+                <!-- Risk Circuit Breakers -->
+                <div class="glass-card rounded-3xl p-6" id="risk-status-card">
+                    <div class="flex items-center justify-between mb-4 border-b border-gray-700/50 pb-2">
+                        <h2 class="text-lg font-bold">Risk Circuit Breakers</h2>
+                        @php $isPaused = $botState['is_paused'] ?? false; @endphp
+                        <span id="risk-status-pill"
+                            class="text-xs font-bold px-2 py-1 rounded-md {{ $isPaused ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' }}">
+                            {{ $isPaused ? 'Paused' : 'Armed' }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+                            <p class="text-xs text-slate-400 font-bold">Daily Loss</p>
+                            <p class="text-lg font-extrabold text-white" id="risk-daily-loss">
+                                {{ number_format($botState['daily_loss_usdt'] ?? 0, 2) }} / {{ number_format($botConfig['daily_max_loss_usdt'] ?? 5, 2) }}
+                            </p>
+                            <p class="text-[10px] text-slate-500">USDT</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+                            <p class="text-xs text-slate-400 font-bold">Drawdown</p>
+                            <p class="text-lg font-extrabold text-white" id="risk-drawdown">
+                                {{ number_format($botState['current_drawdown_pct'] ?? 0, 2) }} / {{ number_format($botConfig['drawdown_limit_pct'] ?? 10, 2) }}%
+                            </p>
+                            <p class="text-[10px] text-slate-500">from equity peak</p>
+                        </div>
+                    </div>
+                    <p class="text-xs mt-3 {{ $isPaused ? 'text-rose-300' : 'text-slate-400' }}" id="risk-reason">
+                        {{ $isPaused ? ($botState['pause_reason'] ?? 'Bot paused by circuit breaker.') : 'No circuit breaker active.' }}
+                    </p>
+                </div>
+
                 <!-- Live Control Panel -->
                 <div class="glass-card rounded-3xl p-6" id="control-panel">
                     <h2 class="text-lg font-bold mb-4 border-b border-gray-700/50 pb-2 flex items-center gap-2">
@@ -160,6 +191,25 @@
                                     class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
                             </div>
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-slate-400 font-bold block mb-1">Daily Max Loss</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">$</span>
+                                    <input type="number" id="daily_max_loss_usdt" name="daily_max_loss_usdt"
+                                        value="{{ $botConfig['daily_max_loss_usdt'] ?? 5 }}"
+                                        min="1" max="100000" step="0.01"
+                                        class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 font-bold block mb-1">Drawdown Limit %</label>
+                                <input type="number" id="drawdown_limit_pct" name="drawdown_limit_pct"
+                                    value="{{ $botConfig['drawdown_limit_pct'] ?? 10 }}"
+                                    min="1" max="80" step="0.1"
+                                    class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all">
+                            </div>
+                        </div>
                         <div class="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl border border-gray-700">
                             <div>
                                 <p class="text-sm font-bold text-white">EMA 200 Trend Filter</p>
@@ -172,6 +222,37 @@
                                 <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                             </label>
                         </div>
+                        <!-- Symbol Selector -->
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold block mb-1">🎯 Active Trading Symbol</label>
+                            <select id="symbol" name="symbol"
+                                class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all">
+                                @php
+                                    $allowedSymbols = ['WLDUSDT','BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','ADAUSDT','XRPUSDT','DOTUSDT'];
+                                    $currentSymbol  = $botConfig['symbol'] ?? 'WLDUSDT';
+                                @endphp
+                                @foreach($allowedSymbols as $sym)
+                                    <option value="{{ $sym }}" {{ $currentSymbol === $sym ? 'selected' : '' }}>{{ $sym }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[10px] text-slate-500 mt-1">เหรียญที่บอทจะเทรดและ Dashboard จะแสดง</p>
+                        </div>
+
+                        <!-- Timeframe Selector -->
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold block mb-1">⏱ Kline Timeframe</label>
+                            <select id="timeframe" name="timeframe"
+                                class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500 transition-all">
+                                @php
+                                    $currentTf = $botConfig['timeframe'] ?? '15m';
+                                    $timeframes = ['1m','5m','15m','30m','1h','4h','1d'];
+                                @endphp
+                                @foreach($timeframes as $tf)
+                                    <option value="{{ $tf }}" {{ $currentTf === $tf ? 'selected' : '' }}>{{ $tf }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <button type="submit" id="save-config-btn"
                             class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
                             <span id="save-btn-icon">💾</span>
@@ -183,8 +264,8 @@
                 <!-- Live Market & RSI -->
                 <div class="glass-card rounded-3xl p-6 relative overflow-hidden">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-700/50 pb-2">
-                        <h2 class="text-lg font-bold">WLD/USDT</h2>
-                        <span class="text-xs font-bold px-2 py-1 bg-gray-800 rounded-md">15m</span>
+                        <h2 class="text-lg font-bold" id="active-symbol-label">{{ $activeSymbol ?? 'WLDUSDT' }}</h2>
+                        <span class="text-xs font-bold px-2 py-1 bg-gray-800 rounded-md" id="active-tf-label">{{ $timeframe ?? '15m' }}</span>
                     </div>
                     
                     <div class="text-center mb-6">
@@ -325,6 +406,30 @@
             // Total Value
             document.getElementById('val-total').innerHTML = `≈ ${parseFloat(data.totalUsdtValue).toFixed(2)} <span class="text-lg text-slate-400">USDT</span>`;
 
+            // Risk circuit breaker state
+            if (data.botState) {
+                const cfg = data.botConfig || {};
+                const paused = !!data.botState.is_paused;
+                const pill = document.getElementById('risk-status-pill');
+                const reason = document.getElementById('risk-reason');
+
+                document.getElementById('risk-daily-loss').innerText =
+                    `${parseFloat(data.botState.daily_loss_usdt || 0).toFixed(2)} / ${parseFloat(cfg.daily_max_loss_usdt || 5).toFixed(2)}`;
+                document.getElementById('risk-drawdown').innerText =
+                    `${parseFloat(data.botState.current_drawdown_pct || 0).toFixed(2)} / ${parseFloat(cfg.drawdown_limit_pct || 10).toFixed(2)}%`;
+
+                if (pill) {
+                    pill.innerText = paused ? 'Paused' : 'Armed';
+                    pill.className = paused
+                        ? 'text-xs font-bold px-2 py-1 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        : 'text-xs font-bold px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                }
+                if (reason) {
+                    reason.innerText = paused ? (data.botState.pause_reason || 'Bot paused by circuit breaker.') : 'No circuit breaker active.';
+                    reason.className = paused ? 'text-xs mt-3 text-rose-300' : 'text-xs mt-3 text-slate-400';
+                }
+            }
+
             // Update Chart
             if (data.klinesChart && data.klinesChart.length > 0) {
                 candleSeries.setData(data.klinesChart);
@@ -442,6 +547,10 @@
                 rsi_sell: document.getElementById('rsi_sell').value,
                 trade_amount_usdt: document.getElementById('trade_amount_usdt').value,
                 use_ema_filter: document.getElementById('use_ema_filter').checked ? 1 : 0,
+                symbol: document.getElementById('symbol').value,
+                timeframe: document.getElementById('timeframe').value,
+                daily_max_loss_usdt: document.getElementById('daily_max_loss_usdt').value,
+                drawdown_limit_pct: document.getElementById('drawdown_limit_pct').value,
                 _token: document.querySelector('[name="_token"]').value
             };
 
@@ -454,9 +563,18 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    showToast('✅ Bot configuration saved successfully!', 'success');
+                    showToast('✅ Bot configuration saved! Refreshing data...', 'success');
                     btnIcon.innerText = '✅';
                     btnText.innerText = 'Saved!';
+                    // Update chart header labels immediately
+                    const sym = document.getElementById('symbol').value;
+                    const tf  = document.getElementById('timeframe').value;
+                    const symEl = document.getElementById('active-symbol-label');
+                    const tfEl  = document.getElementById('active-tf-label');
+                    if (symEl) symEl.innerText = sym;
+                    if (tfEl)  tfEl.innerText  = tf;
+                    // Refresh dashboard data with new symbol
+                    setTimeout(() => fetchDashboardData(true), 800);
                     setTimeout(() => { btnIcon.innerText = '💾'; btnText.innerText = 'Save Configuration'; }, 2500);
                 } else {
                     showToast('❌ Failed to save configuration.', 'error');
@@ -491,7 +609,9 @@
                 rsi: {{ $rsi ?? 0 }},
                 totalUsdtValue: {{ $totalUsdtValue ?? 0 }},
                 klinesChart: @json($klinesChart ?? []),
-                trades: @json($trades ?? [])
+                trades: @json($trades ?? []),
+                botConfig: @json($botConfig ?? []),
+                botState: @json($botState ?? [])
             };
             updateUI(initPayload);
 
