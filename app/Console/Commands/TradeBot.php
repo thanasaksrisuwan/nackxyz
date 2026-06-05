@@ -11,46 +11,61 @@ use Aws\Exception\AwsException;
 class TradeBot extends Command
 {
     protected $signature = 'trade:run';
-    protected $description = 'Execute the Binance TH trading bot logic and log to DynamoDB';
+    protected $description = 'Execute the Binance TH RSI trading bot logic and log to DynamoDB';
 
     private $baseUrl = 'https://api.binance.th';
 
     public function handle()
     {
-        Log::info('TradeBot: Starting trading cycle...');
+        Log::info('TradeBot: Starting RSI trading cycle...');
 
         try {
-            $symbol = 'BTCTHB'; // Trading pair on Binance TH
+            $symbol = 'BTCTHB'; // Trading pair
+            $interval = '15m';  // 15-minute timeframe for RSI
 
-            // 1. Fetch Real Price from Binance TH
-            $price = $this->fetchBinancePrice($symbol);
-            Log::info("TradeBot: Current {$symbol} price is {$price} THB");
+            // 1. Fetch historical closing prices (last 100 candles)
+            $closes = $this->fetchBinanceClosingPrices($symbol, $interval, 100);
+            
+            if (count($closes) < 15) {
+                Log::warning('TradeBot: Not enough data to calculate RSI.');
+                return;
+            }
 
-            // 2. Trading Logic Evaluation (Customize this strategy!)
+            $currentPrice = end($closes);
+            
+            // 2. Calculate RSI
+            $rsi = $this->calculateRSI($closes, 14);
+            $rsiFormatted = number_format($rsi, 2);
+            
+            Log::info("TradeBot: Current {$symbol} price is {$currentPrice} THB | RSI: {$rsiFormatted}");
+
+            // 3. Trading Logic Evaluation (RSI Strategy)
             $action = 'HOLD';
-            // Example Strategy: 
-            // Buy if BTC is extremely cheap (just an example threshold)
-            if ($price < 2000000) {
+            
+            if ($rsi < 30) {
+                // Oversold -> Buy Low
                 $action = 'BUY';
-            } elseif ($price > 2500000) {
+            } elseif ($rsi > 70) {
+                // Overbought -> Sell High
                 $action = 'SELL';
             }
 
             Log::info("TradeBot: Decision made -> {$action}");
 
-            // 3. Execute Trade (Using TEST endpoint so it won't use real money yet)
+            // 4. Execute Trade (Using TEST endpoint to protect funds)
             if ($action !== 'HOLD') {
                 $tradeSuccess = $this->executeTestTrade($symbol, $action);
                 
-                // 4. Save to DynamoDB & Send Telegram Alert
+                // 5. Save to DynamoDB & Send Telegram Alert
                 if ($tradeSuccess) {
-                    $this->logTradeToDynamoDB($symbol, $action, $price);
+                    $this->logTradeToDynamoDB($symbol, $action, $currentPrice);
                     
-                    $message = "🤖 <b>Binance Bot Alert</b>\n"
+                    $message = "🤖 <b>Binance Bot Alert (RSI Strategy)</b>\n"
                              . "✅ Test Trade Executed\n"
                              . "<b>Action:</b> {$action}\n"
                              . "<b>Symbol:</b> {$symbol}\n"
-                             . "<b>Price:</b> " . number_format($price, 2) . " THB";
+                             . "<b>Price:</b> " . number_format($currentPrice, 2) . " THB\n"
+                             . "<b>RSI (14):</b> {$rsiFormatted}";
                     $this->sendTelegramAlert($message);
                 }
             }
@@ -62,17 +77,60 @@ class TradeBot extends Command
         Log::info('TradeBot: Cycle completed.');
     }
 
-    private function fetchBinancePrice(string $symbol): float
+    private function fetchBinanceClosingPrices(string $symbol, string $interval, int $limit): array
     {
-        $response = Http::get("{$this->baseUrl}/api/v3/ticker/price", [
-            'symbol' => $symbol
+        $response = Http::get("{$this->baseUrl}/api/v3/klines", [
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'limit' => $limit
         ]);
 
         if ($response->successful()) {
-            return (float) $response->json('price');
+            $klines = $response->json();
+            $closes = [];
+            foreach ($klines as $kline) {
+                $closes[] = (float) $kline[4]; // Index 4 is the Closing Price
+            }
+            return $closes;
         }
 
-        throw new \Exception("Failed to fetch price: " . $response->body());
+        throw new \Exception("Failed to fetch klines: " . $response->body());
+    }
+
+    private function calculateRSI(array $closes, int $period = 14): float
+    {
+        if (count($closes) < $period + 1) return 50.0;
+
+        $gains = 0.0;
+        $losses = 0.0;
+
+        // Calculate initial average gain/loss
+        for ($i = 1; $i <= $period; $i++) {
+            $change = $closes[$i] - $closes[$i - 1];
+            if ($change > 0) {
+                $gains += $change;
+            } else {
+                $losses += abs($change);
+            }
+        }
+
+        $avgGain = $gains / $period;
+        $avgLoss = $losses / $period;
+
+        // Smooth the rest of the values (Wilder's Smoothing Method)
+        for ($i = $period + 1; $i < count($closes); $i++) {
+            $change = $closes[$i] - $closes[$i - 1];
+            $gain = $change > 0 ? $change : 0.0;
+            $loss = $change < 0 ? abs($change) : 0.0;
+
+            $avgGain = (($avgGain * ($period - 1)) + $gain) / $period;
+            $avgLoss = (($avgLoss * ($period - 1)) + $loss) / $period;
+        }
+
+        if ($avgLoss == 0) return 100.0;
+
+        $rs = $avgGain / $avgLoss;
+        return 100.0 - (100.0 / (1.0 + $rs));
     }
 
     private function executeTestTrade(string $symbol, string $action): bool
@@ -99,8 +157,6 @@ class TradeBot extends Command
         $signature = hash_hmac('sha256', $queryString, $apiSecret);
         $params['signature'] = $signature;
 
-        // Use /api/v3/order/test to VALIDATE the order without actually buying/selling
-        // Change to /api/v3/order when you want to trade real money.
         $response = Http::withHeaders([
             'X-MBX-APIKEY' => $apiKey
         ])->post("{$this->baseUrl}/api/v3/order/test", $params);
