@@ -151,7 +151,7 @@
                 <div class="glass-card rounded-3xl p-6">
                     <h2 class="text-lg font-bold mb-4 border-b border-gray-700/50 pb-2">Recent Trade Logs</h2>
                     @if(empty($trades))
-                        <p class="text-slate-400 py-8 text-center">No trades recorded in DynamoDB yet.</p>
+                        <p class="text-slate-400 py-8 text-center">No trades recorded on Binance TH yet.</p>
                     @else
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse text-sm">
@@ -166,13 +166,13 @@
                                 <tbody>
                                     @foreach($trades as $t)
                                         @php
-                                            // Handle DynamoDB array structure (S, N, etc)
-                                            $time = isset($t['Timestamp']['S']) ? date('M d, H:i:s', strtotime($t['Timestamp']['S'])) : '-';
-                                            $action = $t['Action']['S'] ?? 'UNKNOWN';
-                                            $qty = $t['Quantity']['N'] ?? $t['Quantity']['S'] ?? '0';
-                                            $price = $t['Price']['N'] ?? $t['Price']['S'] ?? '0';
+                                            // Handle Binance API format
+                                            $time = isset($t['time']) ? date('M d, H:i:s', $t['time'] / 1000) : '-';
+                                            $isBuy = $t['isBuyer'] ?? false;
+                                            $action = $isBuy ? 'BUY' : 'SELL';
+                                            $qty = $t['qty'] ?? '0';
+                                            $price = $t['price'] ?? '0';
                                             $value = (float)$qty * (float)$price;
-                                            $isBuy = str_contains(strtoupper($action), 'BUY');
                                         @endphp
                                         <tr class="border-b border-gray-700/30 hover:bg-white/5 transition-colors">
                                             <td class="py-3 px-2 text-slate-300">{{ $time }}</td>

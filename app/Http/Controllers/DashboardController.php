@@ -80,22 +80,29 @@ class DashboardController extends Controller
                 }
             } catch (\Exception $e) {}
 
-            // 4. Fetch Trades from DynamoDB
+            // 4. Fetch Trades from Binance (userTrades) to include manual history
             try {
-                $dynamoDb = new \Aws\DynamoDb\DynamoDbClient([
-                    'region' => env('AWS_DEFAULT_REGION', 'ap-southeast-1'),
-                    'version' => 'latest'
+                $queryStringTrades = "symbol=WLDUSDT&timestamp={$timestamp}";
+                $signatureTrades = hash_hmac('sha256', $queryStringTrades, $apiSecret);
+
+                $tradesResp = Http::withHeaders([
+                    'X-MBX-APIKEY' => $apiKey
+                ])->get("{$baseUrl}/api/v1/userTrades", [
+                    'symbol' => 'WLDUSDT',
+                    'timestamp' => $timestamp,
+                    'signature' => $signatureTrades
                 ]);
-                $result = $dynamoDb->scan([
-                    'TableName' => env('DYNAMODB_TABLE_TRADES', 'TradesTable'),
-                ]);
-                $items = $result['Items'] ?? [];
-                usort($items, function($a, $b) {
-                    return strcmp($b['Timestamp']['S'] ?? '', $a['Timestamp']['S'] ?? '');
-                });
-                $trades = array_slice($items, 0, 10);
+
+                if ($tradesResp->successful()) {
+                    $items = $tradesResp->json();
+                    // Sort descending by time
+                    usort($items, function($a, $b) {
+                        return $b['time'] <=> $a['time'];
+                    });
+                    $trades = array_slice($items, 0, 15);
+                }
             } catch (\Exception $e) {
-                // If DynamoDB not set up, just ignore
+                // Ignore if fails
             }
         }
 
