@@ -6,12 +6,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 
+use App\Services\BotConfig;
+
 class DashboardController extends Controller
 {
     private $baseUrl = 'https://api.binance.th';
 
     public function index()
     {
+        $botConfig = BotConfig::get();
+        
         $baseUrl = env('BINANCE_BASE_URL', 'https://api.binance.th');
         $apiKey = env('BINANCE_API_KEY');
         $apiSecret = env('BINANCE_API_SECRET');
@@ -152,7 +156,7 @@ class DashboardController extends Controller
 
         $data = compact(
             'balances', 'wldPrice', 'priceChange24h', 'priceChangePercent',
-            'rsi', 'trades', 'totalUsdtValue', 'error'
+            'rsi', 'trades', 'totalUsdtValue', 'error', 'botConfig'
         );
         
         // Pass klines array specifically for the frontend chart
@@ -172,6 +176,25 @@ class DashboardController extends Controller
         }
 
         return view('welcome', $data);
+    }
+
+    public function saveConfig(Request $request)
+    {
+        $validated = $request->validate([
+            'rsi_buy' => 'required|numeric|min:10|max:50',
+            'rsi_sell' => 'required|numeric|min:50|max:90',
+            'trade_amount_usdt' => 'required|numeric|min:10|max:1000',
+            'use_ema_filter' => 'required|boolean',
+        ]);
+
+        $success = BotConfig::set([
+            'rsi_buy' => (float) $validated['rsi_buy'],
+            'rsi_sell' => (float) $validated['rsi_sell'],
+            'trade_amount_usdt' => (float) $validated['trade_amount_usdt'],
+            'use_ema_filter' => (bool) $validated['use_ema_filter'],
+        ]);
+
+        return response()->json(['success' => $success]);
     }
 
     private function calculateRSI(array $closes, int $period = 14): float

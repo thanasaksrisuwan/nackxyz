@@ -120,6 +120,60 @@
                     </div>
                 </div>
 
+                <!-- Live Control Panel -->
+                <div class="glass-card rounded-3xl p-6" id="control-panel">
+                    <h2 class="text-lg font-bold mb-4 border-b border-gray-700/50 pb-2 flex items-center gap-2">
+                        <span>⚙️</span> Bot Control Panel
+                        <span class="ml-auto text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">Live</span>
+                    </h2>
+                    <form id="bot-config-form" class="space-y-4" onsubmit="saveConfig(event)">
+                        @csrf
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-slate-400 font-bold block mb-1">RSI Buy ≤</label>
+                                <input type="number" id="rsi_buy" name="rsi_buy"
+                                    value="{{ $botConfig['rsi_buy'] ?? 30 }}"
+                                    min="10" max="50" step="1"
+                                    class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 font-bold block mb-1">RSI Sell ≥</label>
+                                <input type="number" id="rsi_sell" name="rsi_sell"
+                                    value="{{ $botConfig['rsi_sell'] ?? 70 }}"
+                                    min="50" max="90" step="1"
+                                    class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold block mb-1">Trade Amount (USDT)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">$</span>
+                                <input type="number" id="trade_amount_usdt" name="trade_amount_usdt"
+                                    value="{{ $botConfig['trade_amount_usdt'] ?? 15 }}"
+                                    min="10" max="1000" step="1"
+                                    class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl border border-gray-700">
+                            <div>
+                                <p class="text-sm font-bold text-white">EMA 200 Trend Filter</p>
+                                <p class="text-xs text-slate-400">Only buy in uptrends (Price > EMA200)</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="use_ema_filter" name="use_ema_filter" value="1"
+                                    {{ ($botConfig['use_ema_filter'] ?? true) ? 'checked' : '' }}
+                                    class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                            </label>
+                        </div>
+                        <button type="submit" id="save-config-btn"
+                            class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
+                            <span id="save-btn-icon">💾</span>
+                            <span id="save-btn-text">Save Configuration</span>
+                        </button>
+                    </form>
+                </div>
+
                 <!-- Live Market & RSI -->
                 <div class="glass-card rounded-3xl p-6 relative overflow-hidden">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-700/50 pb-2">
@@ -362,6 +416,55 @@
                     document.getElementById('sync-icon').classList.remove('hidden');
                     document.getElementById('sync-text').innerText = 'Refresh Data';
                 }, 500); // Small delay for UX
+            }
+        }
+
+        async function saveConfig(event) {
+            event.preventDefault();
+            const btn = document.getElementById('save-config-btn');
+            const btnIcon = document.getElementById('save-btn-icon');
+            const btnText = document.getElementById('save-btn-text');
+
+            // Loading state
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btnIcon.innerText = '⏳';
+            btnText.innerText = 'Saving...';
+
+            const formData = {
+                rsi_buy: document.getElementById('rsi_buy').value,
+                rsi_sell: document.getElementById('rsi_sell').value,
+                trade_amount_usdt: document.getElementById('trade_amount_usdt').value,
+                use_ema_filter: document.getElementById('use_ema_filter').checked ? 1 : 0,
+                _token: document.querySelector('[name="_token"]').value
+            };
+
+            try {
+                const response = await fetch('/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showToast('✅ Bot configuration saved successfully!', 'success');
+                    btnIcon.innerText = '✅';
+                    btnText.innerText = 'Saved!';
+                    setTimeout(() => { btnIcon.innerText = '💾'; btnText.innerText = 'Save Configuration'; }, 2500);
+                } else {
+                    showToast('❌ Failed to save configuration.', 'error');
+                    btnIcon.innerText = '❌';
+                    btnText.innerText = 'Error!';
+                    setTimeout(() => { btnIcon.innerText = '💾'; btnText.innerText = 'Save Configuration'; }, 2500);
+                }
+            } catch (e) {
+                showToast('❌ Network error. Could not connect.', 'error');
+                btnIcon.innerText = '💾';
+                btnText.innerText = 'Save Configuration';
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
             }
         }
 

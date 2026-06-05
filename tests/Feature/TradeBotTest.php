@@ -13,6 +13,8 @@ class TradeBotTest extends TestCase
         // Mock Environment
         putenv('BINANCE_API_KEY=testkey');
         putenv('BINANCE_API_SECRET=testsecret');
+        // Unset DynamoDB table so BotConfig returns defaults without AWS SDK call
+        putenv('DYNAMODB_TABLE=');
         
         // Mock Http Responses
         Http::fake([
@@ -24,7 +26,7 @@ class TradeBotTest extends TestCase
                 ]
             ], 200),
             
-            // 2. Klines (Mock 100 periods to simulate RSI < 30)
+            // 2. Klines (Mock 300 periods to simulate RSI < 30 + EMA bullish)
             '*api/v1/klines*' => Http::response(
                 $this->generateMockKlines(oversold: true)
             , 200),

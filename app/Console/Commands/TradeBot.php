@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Aws\DynamoDb\DynamoDbClient;
 use Aws\Exception\AwsException;
+use App\Services\BotConfig;
 
 class TradeBot extends Command
 {
@@ -17,11 +18,15 @@ class TradeBot extends Command
         return env('BINANCE_BASE_URL', 'https://api.binance.th');
     }
     
-    private $targetBudgetUsdt = 15.0; // Min notional on Binance is usually $10. Use $15 to be safe.
-
     public function handle()
     {
         Log::info('TradeBot: Starting RSI trading cycle...');
+        
+        $config = BotConfig::get();
+        $targetBudgetUsdt = $config['trade_amount_usdt'] ?? 15.0;
+        $rsiBuy = $config['rsi_buy'] ?? 30;
+        $rsiSell = $config['rsi_sell'] ?? 70;
+        $useEmaFilter = $config['use_ema_filter'] ?? true;
 
         try {
             $baseAsset = 'WLD';
@@ -55,22 +60,22 @@ class TradeBot extends Command
             $isHoldingPosition = ($baseBalance * $currentPrice) > 5.0;
             Log::info("TradeBot: Holding {$baseBalance} {$baseAsset}. State: " . ($isHoldingPosition ? 'IN POSITION' : 'FLAT'));
 
-            // 4. Trading Logic Evaluation (RSI + EMA 200 Trend Filter)
+            // 4. Trading Logic Evaluation (Dynamic Config + Trend Filter)
             $action = 'HOLD';
             
-            if ($rsi < 30 && !$isHoldingPosition) {
+            if ($rsi < $rsiBuy && !$isHoldingPosition) {
                 // Oversold & Flat -> Check EMA Trend Filter
-                if ($currentPrice > $ema200) {
-                    Log::info("TradeBot: Trend is Bullish (Price {$currentPrice} > EMA {$emaFormatted}). Executing Buy the Dip.");
+                if (!$useEmaFilter || $currentPrice > $ema200) {
+                    Log::info("TradeBot: Conditions met (RSI < {$rsiBuy}, Trend Filter Passed). Executing Buy the Dip.");
                     $action = 'BUY';
                 } else {
                     Log::info("TradeBot: Trend is Bearish (Price {$currentPrice} <= EMA {$emaFormatted}). Ignoring RSI oversold to avoid catching a falling knife.");
                     $action = 'HOLD';
                 }
-            } elseif ($rsi > 70 && $isHoldingPosition) {
+            } elseif ($rsi > $rsiSell && $isHoldingPosition) {
                 // Overbought & Holding -> Sell
                 
-                // Prevent Phantom Profit (กำไรทิพย์)
+                // 5. Profitability Check (Issue C: Phantom Profits)
                 $averageEntryPrice = $this->getLastBuyPrice($symbol);
                 $minProfitThreshold = 1.005; // 0.5% buffer for 0.2% round-trip fees
                 
@@ -96,8 +101,8 @@ class TradeBot extends Command
                 
                 // Calculate dynamic quantity. WLD step size allows 1 decimal place usually.
                 if ($action === 'BUY') {
-                    // Buy $15 worth of WLD
-                    $quantity = floor(($this->targetBudgetUsdt / $currentPrice) * 10) / 10;
+                    // Buy $targetBudgetUsdt worth of WLD
+                    $quantity = floor(($targetBudgetUsdt / $currentPrice) * 10) / 10;
                 } else {
                     // Sell our entire WLD balance
                     $quantity = floor($baseBalance * 10) / 10;
