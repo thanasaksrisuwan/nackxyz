@@ -28,6 +28,7 @@ provider:
         BINANCE_API_SECRET: ${env:BINANCE_API_SECRET, ''}
         TELEGRAM_BOT_TOKEN: ${env:TELEGRAM_BOT_TOKEN, ''}
         TELEGRAM_CHAT_ID: ${env:TELEGRAM_CHAT_ID, ''}
+        ADMIN_PASSWORD: ${env:ADMIN_PASSWORD, 'admin123'}
         # Log to stderr so CloudWatch can capture it
         LOG_CHANNEL: stderr
         # Session and cache must be serverless friendly (array, cookie, or dynamo)
