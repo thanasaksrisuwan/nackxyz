@@ -195,7 +195,7 @@ class TradeBot extends Command
         $timestamp = (int) (microtime(true) * 1000);
         $params = [
             'symbol' => $symbol,
-            'side' => $action,
+            'side' => $side,
             'type' => 'MARKET',
             'quantity' => $quantity,
             'recvWindow' => 10000,
