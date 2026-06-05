@@ -72,11 +72,11 @@ class DashboardController extends Controller
                 $klinesResp = Http::get("{$baseUrl}/api/v1/klines", [
                     'symbol' => 'WLDUSDT',
                     'interval' => '15m',
-                    'limit' => 15
+                    'limit' => 100
                 ]);
                 if ($klinesResp->successful()) {
                     $klines = $klinesResp->json();
-                    if (count($klines) === 15) {
+                    if (count($klines) >= 15) {
                         $closes = array_map(fn($k) => (float)$k[4], $klines);
                         $rsi = $this->calculateRSI($closes, 14);
                     }
