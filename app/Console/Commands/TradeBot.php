@@ -13,7 +13,10 @@ class TradeBot extends Command
     protected $signature = 'trade:run';
     protected $description = 'Execute the Binance TH RSI trading bot logic securely';
 
-    private $baseUrl = 'https://api.binance.th';
+    private function getBaseUrl(): string {
+        return env('BINANCE_BASE_URL', 'https://api.binance.com');
+    }
+    
     private $targetBudgetUsdt = 15.0; // Min notional on Binance is usually $10. Use $15 to be safe.
 
     public function handle()
@@ -115,7 +118,7 @@ class TradeBot extends Command
 
         $response = Http::withHeaders([
             'X-MBX-APIKEY' => $apiKey
-        ])->get("{$this->baseUrl}/api/v3/account", [
+        ])->get("{$this->getBaseUrl()}/api/v3/account", [
             'recvWindow' => 10000,
             'timestamp' => $timestamp,
             'signature' => $signature
@@ -132,7 +135,7 @@ class TradeBot extends Command
 
     private function fetchBinanceClosingPrices(string $symbol, string $interval, int $limit): array
     {
-        $response = Http::get("{$this->baseUrl}/api/v3/klines", [
+        $response = Http::get("{$this->getBaseUrl()}/api/v3/klines", [
             'symbol' => $symbol,
             'interval' => $interval,
             'limit' => $limit
@@ -204,7 +207,7 @@ class TradeBot extends Command
 
         $response = Http::withHeaders([
             'X-MBX-APIKEY' => $apiKey
-        ])->post("{$this->baseUrl}/api/v3/order/test", $params);
+        ])->post("{$this->getBaseUrl()}/api/v3/order/test", $params);
 
         if ($response->successful()) {
             return true;

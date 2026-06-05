@@ -11,6 +11,7 @@ class DashboardController extends Controller
 
     public function index()
     {
+        $baseUrl = env('BINANCE_BASE_URL', 'https://api.binance.com');
         $apiKey = env('BINANCE_API_KEY');
         $apiSecret = env('BINANCE_API_SECRET');
         $error = null;
@@ -28,7 +29,7 @@ class DashboardController extends Controller
 
                 $response = Http::withHeaders([
                     'X-MBX-APIKEY' => $apiKey
-                ])->get("{$this->baseUrl}/api/v3/account", [
+                ])->get("{$baseUrl}/api/v3/account", [
                     'timestamp' => $timestamp,
                     'signature' => $signature
                 ]);
@@ -50,7 +51,7 @@ class DashboardController extends Controller
 
             // 2. Fetch WLDUSDT Price
             try {
-                $priceResp = Http::get("{$this->baseUrl}/api/v3/ticker/price", [
+                $priceResp = Http::get("{$baseUrl}/api/v3/ticker/price", [
                     'symbol' => 'WLDUSDT'
                 ]);
                 if ($priceResp->successful()) {
