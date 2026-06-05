@@ -29,19 +29,23 @@ class TradeBot extends Command
             $symbol = $baseAsset . $quoteAsset;
             $interval = '15m'; 
 
-            // 1. Fetch historical closing prices
-            $closes = $this->fetchBinanceClosingPrices($symbol, $interval, 100);
-            if (count($closes) < 15) {
-                Log::warning('TradeBot: Not enough data to calculate RSI.');
+            // 1. Fetch historical closing prices (Increased limit to 300 for EMA 200 calculation)
+            $closes = $this->fetchBinanceClosingPrices($symbol, $interval, 300);
+            if (count($closes) < 200) {
+                Log::warning('TradeBot: Not enough data to calculate EMA 200 and RSI.');
                 return;
             }
 
             $currentPrice = end($closes);
             
-            // 2. Calculate RSI
+            // 2. Calculate RSI & EMA 200
             $rsi = $this->calculateRSI($closes, 14);
             $rsiFormatted = number_format($rsi, 2);
-            Log::info("TradeBot: Current {$symbol} price is {$currentPrice} {$quoteAsset} | RSI: {$rsiFormatted}");
+            
+            $ema200 = $this->calculateEMA($closes, 200);
+            $emaFormatted = number_format($ema200, 4);
+
+            Log::info("TradeBot: Current {$symbol} price is {$currentPrice} {$quoteAsset} | RSI: {$rsiFormatted} | EMA200: {$emaFormatted}");
 
             // 3. Position State Management (Issue A)
             $balances = $this->fetchAccountBalances();
@@ -51,12 +55,18 @@ class TradeBot extends Command
             $isHoldingPosition = ($baseBalance * $currentPrice) > 5.0;
             Log::info("TradeBot: Holding {$baseBalance} {$baseAsset}. State: " . ($isHoldingPosition ? 'IN POSITION' : 'FLAT'));
 
-            // 4. Trading Logic Evaluation (RSI Strategy + State Constraints)
+            // 4. Trading Logic Evaluation (RSI + EMA 200 Trend Filter)
             $action = 'HOLD';
             
             if ($rsi < 30 && !$isHoldingPosition) {
-                // Oversold & Flat -> Buy
-                $action = 'BUY';
+                // Oversold & Flat -> Check EMA Trend Filter
+                if ($currentPrice > $ema200) {
+                    Log::info("TradeBot: Trend is Bullish (Price {$currentPrice} > EMA {$emaFormatted}). Executing Buy the Dip.");
+                    $action = 'BUY';
+                } else {
+                    Log::info("TradeBot: Trend is Bearish (Price {$currentPrice} <= EMA {$emaFormatted}). Ignoring RSI oversold to avoid catching a falling knife.");
+                    $action = 'HOLD';
+                }
             } elseif ($rsi > 70 && $isHoldingPosition) {
                 // Overbought & Holding -> Sell
                 
@@ -238,6 +248,24 @@ class TradeBot extends Command
 
         $rs = $avgGain / $avgLoss;
         return 100.0 - (100.0 / (1.0 + $rs));
+    }
+
+    private function calculateEMA(array $closes, int $period = 200): float
+    {
+        if (count($closes) < $period) return end($closes);
+
+        $multiplier = 2 / ($period + 1);
+        
+        // Start with SMA of the first $period elements
+        $sma = array_sum(array_slice($closes, 0, $period)) / $period;
+        $ema = $sma;
+
+        // Calculate EMA for the rest of the array
+        for ($i = $period; $i < count($closes); $i++) {
+            $ema = ($closes[$i] - $ema) * $multiplier + $ema;
+        }
+
+        return $ema;
     }
 
     // Execute a live trade on Binance TH

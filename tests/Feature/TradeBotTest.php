@@ -57,10 +57,31 @@ class TradeBotTest extends TestCase
     {
         $klines = [];
         $price = 10.0;
-        for ($i = 0; $i < 100; $i++) {
+        for ($i = 0; $i < 300; $i++) {
             if ($oversold) {
-                $price -= 0.1; // Consistent drop to create oversold RSI
+                // To trigger BUY: we need RSI < 30 AND Current Price > EMA 200
+                if ($i < 280) {
+                    $price += 0.05; // Long uptrend to pull EMA 200 up (e.g. from 10 to 24)
+                } else {
+                    $price -= 0.5; // Sharp sudden drop for last 20 periods to crush RSI < 30 
+                }
+                // EMA will lag and be around ~18-20. Current price will be around 14. Wait, 14 is NOT > 20!
+                // Let's do: EMA starts very low. 
+                // Wait, if EMA must be < currentPrice. Let's start price at 10.
+                // 0 to 280: price goes from 10 to 12.
+                // 280 to 300: price drops sharply from 12 to 11. 
+                // EMA200 will be around 11.something. Current price is 11.
+                // Wait, easier:
+                // Just hardcode the prices or adjust.
+                if ($i < 200) {
+                    $price = 10.0; // Flat
+                } elseif ($i < 286) {
+                    $price += 0.5; // Massive pump to 53
+                } else {
+                    $price -= 1.0; // Drop 14 periods to 39. RSI will be 0. EMA200 will be around 20. 39 > 20! Perfect.
+                }
             } else {
+                // To trigger SELL: RSI > 70 AND Holding
                 $price += 0.1; // Consistent rise to create overbought RSI
             }
             $klines[] = [
