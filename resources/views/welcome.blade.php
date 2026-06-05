@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradeBot Pro | Binance TH</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    @vite(['resources/css/app.css'])
+    <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <style>
@@ -71,11 +71,11 @@
                 </div>
             </div>
             <div class="mt-4 md:mt-0 text-right flex items-center gap-6">
-                <!-- Status spinner -->
-                <div id="sync-status" class="flex items-center gap-2 text-xs text-slate-400">
-                    <svg class="animate-spin h-4 w-4 text-electric" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Live Syncing...
-                </div>
+                <!-- Status spinner & Refresh Button -->
+                <button onclick="manualRefresh()" id="sync-btn" class="flex items-center gap-2 text-xs text-slate-400 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 transition-all">
+                    <svg id="sync-spinner" class="h-4 w-4 text-electric hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span id="sync-icon">🔄</span> <span id="sync-text">Refresh Data</span>
+                </button>
                 <div>
                     <p class="text-slate-400 text-sm">Total Portfolio Value</p>
                     <p class="text-4xl font-extrabold text-white" id="val-total">≈ {{ number_format($totalUsdtValue, 2) }} <span class="text-lg text-slate-400">USDT</span></p>
@@ -306,7 +306,13 @@
             document.getElementById('val-winrate').innerText = totalTrades > 0 ? ((wins / Math.max(1, (totalTrades/2))) * 100).toFixed(0) + '%' : '--%';
         }
 
-        async function fetchDashboardData() {
+        async function fetchDashboardData(isManual = false) {
+            if (isManual) {
+                document.getElementById('sync-spinner').classList.add('animate-spin');
+                document.getElementById('sync-spinner').classList.remove('hidden');
+                document.getElementById('sync-icon').classList.add('hidden');
+                document.getElementById('sync-text').innerText = 'Syncing...';
+            }
             try {
                 const response = await fetch('/', { headers: { 'Accept': 'application/json' } });
                 if (response.ok) {
@@ -316,15 +322,26 @@
             } catch (e) {
                 console.error("Auto-refresh failed", e);
             }
+            if (isManual) {
+                setTimeout(() => {
+                    document.getElementById('sync-spinner').classList.remove('animate-spin');
+                    document.getElementById('sync-spinner').classList.add('hidden');
+                    document.getElementById('sync-icon').classList.remove('hidden');
+                    document.getElementById('sync-text').innerText = 'Refresh Data';
+                }, 500); // Small delay for UX
+            }
+        }
+
+        function manualRefresh() {
+            fetchDashboardData(true);
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
             
-            // Render initial data from server to prevent 5-second blank delay
+            // Render initial data from server to prevent blank delay
             let initialData = @json($data ?? []);
-            // Blade $data isn't directly passed as $data, it's extracted. We can reconstruct it.
             let initPayload = {
                 balances: @json($balances ?? []),
                 wldPrice: {{ $wldPrice ?? 0 }},
@@ -336,8 +353,8 @@
             };
             updateUI(initPayload);
 
-            // Start Polling every 5 seconds
-            setInterval(fetchDashboardData, 5000);
+            // Start Polling every 60 seconds (Safe for AWS Lambda Free Tier)
+            setInterval(() => fetchDashboardData(false), 60000);
         });
         
         // Handle resize
