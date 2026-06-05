@@ -53,13 +53,25 @@ jobs:
         if: steps.composer-cache.outputs.cache-hit == 'true'
         run: composer dump-autoload --optimize --no-dev --no-interaction
 
-      # Cache serverless + node_modules to save ~30s
-      - name: Cache Serverless node_modules
+      # Cache npm to speed up tailwind install
+      - name: Cache npm
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: serverless-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: serverless-npm-
+          key: npm-tailwind-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-tailwind-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Build production CSS with Tailwind CLI (not full Vite build)
+      # Output is inlined into the blade template via file_get_contents()
+      - name: Build Tailwind CSS
+        run: |
+          npm install
+          npx tailwindcss -i ./resources/css/app.css -o ./public/css/app.css --minify
 
       - name: Install Serverless Framework
         run: npm install -g serverless@3

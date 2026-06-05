@@ -61,6 +61,8 @@ package:
         - '!tailwind.config.js'
         - '!vite.config.js'
         - '!postcss.config.js'
+        # Explicitly keep compiled CSS (inlined in blade via file_get_contents)
+        - 'public/css/**'
 
 functions:
     # Web dashboard function
