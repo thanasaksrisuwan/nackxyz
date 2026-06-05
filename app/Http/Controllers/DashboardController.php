@@ -83,83 +83,40 @@ class DashboardController extends Controller
                 }
             } catch (\Exception $e) {}
 
-            // 4. Fetch Trade History (DynamoDB with Binance API Fallback)
-            $tableName = env('DYNAMODB_TABLE');
-            $fetchedFromDynamo = false;
+            // 4. Fetch Trade History strictly from Binance API (Single Source of Truth)
+            try {
+                $queryStringTrades = "symbol=WLDUSDT&timestamp={$timestamp}";
+                $signatureTrades = hash_hmac('sha256', $queryStringTrades, $apiSecret);
 
-            if ($tableName) {
-                try {
-                    $client = new DynamoDbClient([
-                        'region'  => env('AWS_DEFAULT_REGION', 'ap-southeast-1'),
-                        'version' => 'latest'
-                    ]);
+                $tradesResp = Http::withHeaders([
+                    'X-MBX-APIKEY' => $apiKey
+                ])->get("{$baseUrl}/api/v1/userTrades", [
+                    'symbol' => 'WLDUSDT',
+                    'timestamp' => $timestamp,
+                    'signature' => $signatureTrades
+                ]);
 
-                    $scanResult = $client->scan([
-                        'TableName' => $tableName,
-                        'Limit' => 15
-                    ]);
-
-                    $items = $scanResult->get('Items') ?? [];
-                    
-                    // Sort descending by timestamp
+                if ($tradesResp->successful()) {
+                    $items = $tradesResp->json();
                     usort($items, function($a, $b) {
-                        $timeA = (int)($a['timestamp']['N'] ?? 0);
-                        $timeB = (int)($b['timestamp']['N'] ?? 0);
-                        return $timeB <=> $timeA;
+                        return $b['time'] <=> $a['time'];
                     });
+                    $items = array_slice($items, 0, 15);
 
                     foreach ($items as $item) {
-                        $qty = (float)($item['quantity']['N'] ?? $item['quantity']['S'] ?? 0);
-                        $prc = (float)($item['price']['N'] ?? $item['price']['S'] ?? 0);
+                        $qty = (float)$item['qty'];
+                        $prc = (float)$item['price'];
                         $trades[] = [
-                            'time' => isset($item['timestamp']['N']) ? date('M d, H:i:s', (int)$item['timestamp']['N']) : '-',
-                            'action' => $item['action']['S'] ?? 'UNKNOWN',
+                            'time' => date('M d, H:i:s', (int)($item['time'] / 1000)),
+                            'action' => $item['isBuyer'] ? 'BUY' : 'SELL',
                             'qty' => $qty,
                             'price' => $prc,
                             'value' => $qty * $prc
                         ];
                     }
-                    $fetchedFromDynamo = true;
-                } catch (\Exception $e) {
-                    // Fallback to Binance API if DynamoDB fails
                 }
-            }
-
-            if (!$fetchedFromDynamo) {
-                try {
-                    $queryStringTrades = "symbol=WLDUSDT&timestamp={$timestamp}";
-                    $signatureTrades = hash_hmac('sha256', $queryStringTrades, $apiSecret);
-
-                    $tradesResp = Http::withHeaders([
-                        'X-MBX-APIKEY' => $apiKey
-                    ])->get("{$baseUrl}/api/v1/userTrades", [
-                        'symbol' => 'WLDUSDT',
-                        'timestamp' => $timestamp,
-                        'signature' => $signatureTrades
-                    ]);
-
-                    if ($tradesResp->successful()) {
-                        $items = $tradesResp->json();
-                        usort($items, function($a, $b) {
-                            return $b['time'] <=> $a['time'];
-                        });
-                        $items = array_slice($items, 0, 15);
-
-                        foreach ($items as $item) {
-                            $qty = (float)$item['qty'];
-                            $prc = (float)$item['price'];
-                            $trades[] = [
-                                'time' => date('M d, H:i:s', (int)($item['time'] / 1000)),
-                                'action' => $item['isBuyer'] ? 'BUY' : 'SELL',
-                                'qty' => $qty,
-                                'price' => $prc,
-                                'value' => $qty * $prc
-                            ];
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore
-                }
+            } catch (\Exception $e) {
+                // Ignore
             }
         }
 
