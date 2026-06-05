@@ -11,21 +11,23 @@ use Aws\Exception\AwsException;
 class TradeBot extends Command
 {
     protected $signature = 'trade:run';
-    protected $description = 'Execute the Binance TH RSI trading bot logic and log to DynamoDB';
+    protected $description = 'Execute the Binance TH RSI trading bot logic securely';
 
     private $baseUrl = 'https://api.binance.th';
+    private $targetBudgetUsdt = 15.0; // Min notional on Binance is usually $10. Use $15 to be safe.
 
     public function handle()
     {
         Log::info('TradeBot: Starting RSI trading cycle...');
 
         try {
-            $symbol = 'WLDUSDT'; // Trading pair
-            $interval = '15m';  // 15-minute timeframe for RSI
+            $baseAsset = 'WLD';
+            $quoteAsset = 'USDT';
+            $symbol = $baseAsset . $quoteAsset;
+            $interval = '15m'; 
 
-            // 1. Fetch historical closing prices (last 100 candles)
+            // 1. Fetch historical closing prices
             $closes = $this->fetchBinanceClosingPrices($symbol, $interval, 100);
-            
             if (count($closes) < 15) {
                 Log::warning('TradeBot: Not enough data to calculate RSI.');
                 return;
@@ -36,35 +38,58 @@ class TradeBot extends Command
             // 2. Calculate RSI
             $rsi = $this->calculateRSI($closes, 14);
             $rsiFormatted = number_format($rsi, 2);
-            
-            Log::info("TradeBot: Current {$symbol} price is {$currentPrice} THB | RSI: {$rsiFormatted}");
+            Log::info("TradeBot: Current {$symbol} price is {$currentPrice} {$quoteAsset} | RSI: {$rsiFormatted}");
 
-            // 3. Trading Logic Evaluation (RSI Strategy)
+            // 3. Position State Management (Issue A)
+            $balances = $this->fetchAccountBalances();
+            $baseBalance = $balances[$baseAsset] ?? 0.0;
+            
+            // If the value of our WLD is > 5 USDT, we consider ourselves "IN" a position
+            $isHoldingPosition = ($baseBalance * $currentPrice) > 5.0;
+            Log::info("TradeBot: Holding {$baseBalance} {$baseAsset}. State: " . ($isHoldingPosition ? 'IN POSITION' : 'FLAT'));
+
+            // 4. Trading Logic Evaluation (RSI Strategy + State Constraints)
             $action = 'HOLD';
             
-            if ($rsi < 30) {
-                // Oversold -> Buy Low
+            if ($rsi < 30 && !$isHoldingPosition) {
+                // Oversold & Flat -> Buy
                 $action = 'BUY';
-            } elseif ($rsi > 70) {
-                // Overbought -> Sell High
+            } elseif ($rsi > 70 && $isHoldingPosition) {
+                // Overbought & Holding -> Sell
                 $action = 'SELL';
             }
 
             Log::info("TradeBot: Decision made -> {$action}");
 
-            // 4. Execute Trade (Using TEST endpoint to protect funds)
+            // 5. Execute Trade (Issue B: Dynamic Quantity, Issue D: recvWindow)
             if ($action !== 'HOLD') {
-                $tradeSuccess = $this->executeTestTrade($symbol, $action);
                 
-                // 5. Save to DynamoDB & Send Telegram Alert
+                // Calculate dynamic quantity. WLD step size allows 1 decimal place usually.
+                if ($action === 'BUY') {
+                    // Buy $15 worth of WLD
+                    $quantity = floor(($this->targetBudgetUsdt / $currentPrice) * 10) / 10;
+                } else {
+                    // Sell our entire WLD balance
+                    $quantity = floor($baseBalance * 10) / 10;
+                }
+
+                if ($quantity <= 0) {
+                    Log::error("TradeBot: Calculated quantity is 0. Cannot execute trade.");
+                    return;
+                }
+
+                $tradeSuccess = $this->executeTestTrade($symbol, $action, $quantity);
+                
+                // 6. Save to DynamoDB & Send Telegram Alert
                 if ($tradeSuccess) {
-                    $this->logTradeToDynamoDB($symbol, $action, $currentPrice);
+                    $this->logTradeToDynamoDB($symbol, $action, $currentPrice, $quantity);
                     
-                    $message = "🤖 <b>Binance Bot Alert (RSI Strategy)</b>\n"
+                    $message = "🤖 <b>Binance Bot Alert</b>\n"
                              . "✅ Test Trade Executed\n"
                              . "<b>Action:</b> {$action}\n"
                              . "<b>Symbol:</b> {$symbol}\n"
-                             . "<b>Price:</b> " . number_format($currentPrice, 2) . " THB\n"
+                             . "<b>Price:</b> " . number_format($currentPrice, 4) . " {$quoteAsset}\n"
+                             . "<b>Quantity:</b> {$quantity} {$baseAsset}\n"
                              . "<b>RSI (14):</b> {$rsiFormatted}";
                     $this->sendTelegramAlert($message);
                 }
@@ -75,6 +100,34 @@ class TradeBot extends Command
         }
 
         Log::info('TradeBot: Cycle completed.');
+    }
+
+    private function fetchAccountBalances(): array
+    {
+        $apiKey = env('BINANCE_API_KEY');
+        $apiSecret = env('BINANCE_API_SECRET');
+        
+        if (!$apiKey || !$apiSecret) return [];
+
+        $timestamp = (int) (microtime(true) * 1000);
+        $queryString = "recvWindow=10000&timestamp={$timestamp}";
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        $response = Http::withHeaders([
+            'X-MBX-APIKEY' => $apiKey
+        ])->get("{$this->baseUrl}/api/v3/account", [
+            'recvWindow' => 10000,
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+
+        $balances = [];
+        if ($response->successful()) {
+            foreach ($response->json('balances', []) as $asset) {
+                $balances[$asset['asset']] = (float)$asset['free'];
+            }
+        }
+        return $balances;
     }
 
     private function fetchBinanceClosingPrices(string $symbol, string $interval, int $limit): array
@@ -89,12 +142,12 @@ class TradeBot extends Command
             $klines = $response->json();
             $closes = [];
             foreach ($klines as $kline) {
-                $closes[] = (float) $kline[4]; // Index 4 is the Closing Price
+                $closes[] = (float) $kline[4];
             }
             return $closes;
         }
 
-        throw new \Exception("Failed to fetch klines: " . $response->body());
+        throw new \Exception("Failed to fetch klines");
     }
 
     private function calculateRSI(array $closes, int $period = 14): float
@@ -104,20 +157,15 @@ class TradeBot extends Command
         $gains = 0.0;
         $losses = 0.0;
 
-        // Calculate initial average gain/loss
         for ($i = 1; $i <= $period; $i++) {
             $change = $closes[$i] - $closes[$i - 1];
-            if ($change > 0) {
-                $gains += $change;
-            } else {
-                $losses += abs($change);
-            }
+            if ($change > 0) $gains += $change;
+            else $losses += abs($change);
         }
 
         $avgGain = $gains / $period;
         $avgLoss = $losses / $period;
 
-        // Smooth the rest of the values (Wilder's Smoothing Method)
         for ($i = $period + 1; $i < count($closes); $i++) {
             $change = $closes[$i] - $closes[$i - 1];
             $gain = $change > 0 ? $change : 0.0;
@@ -133,26 +181,23 @@ class TradeBot extends Command
         return 100.0 - (100.0 / (1.0 + $rs));
     }
 
-    private function executeTestTrade(string $symbol, string $action): bool
+    private function executeTestTrade(string $symbol, string $action, float $quantity): bool
     {
         $apiKey = env('BINANCE_API_KEY');
         $apiSecret = env('BINANCE_API_SECRET');
 
-        if (!$apiKey || !$apiSecret) {
-            Log::warning("TradeBot: API Keys missing. Cannot execute trade.");
-            return false;
-        }
+        if (!$apiKey || !$apiSecret) return false;
 
         $timestamp = (int) (microtime(true) * 1000);
         $params = [
             'symbol' => $symbol,
-            'side' => $action, // 'BUY' or 'SELL'
+            'side' => $action,
             'type' => 'MARKET',
-            'quantity' => 0.001, // Example quantity
+            'quantity' => $quantity,
+            'recvWindow' => 10000,
             'timestamp' => $timestamp,
         ];
 
-        // Generate HMAC SHA256 Signature
         $queryString = http_build_query($params);
         $signature = hash_hmac('sha256', $queryString, $apiSecret);
         $params['signature'] = $signature;
@@ -162,7 +207,6 @@ class TradeBot extends Command
         ])->post("{$this->baseUrl}/api/v3/order/test", $params);
 
         if ($response->successful()) {
-            Log::info("TradeBot: Test trade execution successful.");
             return true;
         }
 
@@ -170,34 +214,28 @@ class TradeBot extends Command
         return false;
     }
 
-    private function logTradeToDynamoDB(string $symbol, string $action, float $price)
+    private function logTradeToDynamoDB(string $symbol, string $action, float $price, float $quantity)
     {
         $tableName = env('DYNAMODB_TABLE');
-        if (!$tableName) {
-            Log::warning('TradeBot: DYNAMODB_TABLE not set, skipping DB log.');
-            return;
-        }
+        if (!$tableName) return;
 
         $client = new DynamoDbClient([
             'region'  => env('AWS_DEFAULT_REGION', 'ap-southeast-1'),
             'version' => 'latest'
         ]);
 
-        $tradeId = uniqid('trade_');
-
         try {
             $client->putItem([
                 'TableName' => $tableName,
                 'Item' => [
-                    'id'        => ['S' => $tradeId],
+                    'id'        => ['S' => uniqid('trade_')],
                     'symbol'    => ['S' => $symbol],
                     'action'    => ['S' => $action],
                     'price'     => ['N' => (string) $price],
+                    'quantity'  => ['N' => (string) $quantity],
                     'timestamp' => ['N' => (string) time()]
                 ]
             ]);
-
-            Log::info("TradeBot: Trade {$tradeId} logged to DynamoDB successfully.");
         } catch (AwsException $e) {
             Log::error("TradeBot: DynamoDB Error - " . $e->getAwsErrorMessage());
         }
@@ -208,20 +246,12 @@ class TradeBot extends Command
         $botToken = env('TELEGRAM_BOT_TOKEN');
         $chatId = env('TELEGRAM_CHAT_ID');
 
-        if (!$botToken || !$chatId) {
-            Log::warning('TradeBot: Telegram credentials not set. Skipping notification.');
-            return;
-        }
+        if (!$botToken || !$chatId) return;
 
-        try {
-            Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                'chat_id' => $chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML'
-            ]);
-            Log::info('TradeBot: Telegram alert sent.');
-        } catch (\Exception $e) {
-            Log::error('TradeBot: Failed to send Telegram alert: ' . $e->getMessage());
-        }
+        Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        ]);
     }
 }
