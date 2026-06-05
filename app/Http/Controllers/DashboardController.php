@@ -134,10 +134,27 @@ class DashboardController extends Controller
             $totalUsdtValue += $b['usdtValue'];
         }
 
-        return view('welcome', compact(
+        $data = compact(
             'balances', 'wldPrice', 'priceChange24h', 'priceChangePercent',
             'rsi', 'trades', 'totalUsdtValue', 'error'
-        ));
+        );
+        
+        // Pass klines array specifically for the frontend chart
+        $data['klinesChart'] = array_map(function($k) {
+            return [
+                'time' => $k[0] / 1000,
+                'open' => (float)$k[1],
+                'high' => (float)$k[2],
+                'low' => (float)$k[3],
+                'close' => (float)$k[4],
+            ];
+        }, $klines ?? []);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json($data);
+        }
+
+        return view('welcome', $data);
     }
 
     private function calculateRSI(array $closes, int $period = 14): float
