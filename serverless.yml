@@ -1,0 +1,46 @@
+service: laravel-mcp-lab
+
+provider:
+    name: aws
+    # The AWS region in which to deploy
+    region: ap-southeast-1
+    stage: dev
+    environment:
+        # App environment variables
+        APP_ENV: production
+        APP_DEBUG: 'false'
+        # Log to stderr so CloudWatch can capture it
+        LOG_CHANNEL: stderr
+        # Session and cache must be serverless friendly (array, cookie, or dynamo)
+        CACHE_STORE: array
+        SESSION_DRIVER: cookie
+        QUEUE_CONNECTION: sync
+        # Database (Use DynamoDB or leave empty for no DB)
+        # DB_CONNECTION: sqlite
+        # DB_DATABASE: /tmp/database.sqlite
+
+package:
+    # Directories to exclude from deployment
+    patterns:
+        - '!node_modules/**'
+        - '!public/storage'
+        - '!resources/assets/**'
+        - '!storage/**'
+        - '!tests/**'
+
+functions:
+    # This function runs the web application via HTTP API
+    web:
+        handler: public/index.php
+        runtime: php-83-fpm
+        timeout: 28 # API Gateway timeout is 29 seconds maximum
+        events:
+            - httpApi: '*'
+    # This function allows running artisan commands via AWS console or AWS CLI
+    artisan:
+        handler: artisan
+        runtime: php-83-console
+        timeout: 120
+
+plugins:
+    - ./vendor/bref/bref
