@@ -7,13 +7,17 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PortfolioController::class, 'index'])->name('portfolio');
 
 // Contact Form AJAX Submission
-Route::post('/contact', [PortfolioController::class, 'contact'])->name('contact.submit');
+Route::post('/contact', [PortfolioController::class, 'contact'])
+    ->middleware('throttle:5,1')
+    ->name('contact.submit');
 
 // Admin Panel routes (for demo simplicity, not protected by complex auth;
 // in production, you should protect these routes with authentication)
-Route::get('/admin', [PortfolioController::class, 'admin'])->name('admin');
-Route::post('/admin/projects', [PortfolioController::class, 'storeProject'])->name('projects.store');
-Route::delete('/admin/projects/{project}', [PortfolioController::class, 'deleteProject'])->name('projects.delete');
+Route::middleware(['auth.basic.admin'])->group(function () {
+    Route::get('/admin', [PortfolioController::class, 'admin'])->name('admin');
+    Route::post('/admin/projects', [PortfolioController::class, 'storeProject'])->name('projects.store');
+    Route::delete('/admin/projects/{project}', [PortfolioController::class, 'deleteProject'])->name('projects.delete');
+});
 
 use App\Http\Controllers\McpController;
 Route::post('/mcp', [McpController::class, 'handle']);

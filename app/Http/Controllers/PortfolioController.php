@@ -67,8 +67,8 @@ class PortfolioController extends Controller
             'description' => 'required|string',
             'tags' => 'required|string', // Comma separated tags: e.g. "Laravel, S3, RDS"
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // Max 5MB
-            'project_url' => 'nullable|url|max:255',
-            'github_url' => 'nullable|url|max:255',
+            'project_url' => 'nullable|url:http,https|max:255',
+            'github_url' => 'nullable|url:http,https|max:255',
         ]);
 
         // Process tags: split comma string into array
@@ -114,7 +114,7 @@ class PortfolioController extends Controller
             
             // Remove storage prefix if it is local public
             if ($disk === 'public') {
-                $path = str_replace('/storage/', '', $path);
+                $path = 'projects/' . basename($path);
             } else {
                 // For S3, clean leading slash if present
                 $path = ltrim($path, '/');
