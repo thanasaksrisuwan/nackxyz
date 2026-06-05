@@ -4,7 +4,9 @@ use App\Http\Controllers\PortfolioController;
 use Illuminate\Support\Facades\Route;
 
 // Portfolio Landing Page
-Route::get('/', [PortfolioController::class, 'index'])->name('portfolio');
+Route::get('/', function () {
+    return view('welcome');
+});
 
 // Contact Form AJAX Submission
 Route::post('/contact', [PortfolioController::class, 'contact'])
