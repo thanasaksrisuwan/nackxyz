@@ -166,13 +166,12 @@
                                 <tbody>
                                     @foreach($trades as $t)
                                         @php
-                                            // Handle Binance API format
-                                            $time = isset($t['time']) ? date('M d, H:i:s', $t['time'] / 1000) : '-';
-                                            $isBuy = $t['isBuyer'] ?? false;
-                                            $action = $isBuy ? 'BUY' : 'SELL';
-                                            $qty = $t['qty'] ?? '0';
-                                            $price = $t['price'] ?? '0';
-                                            $value = (float)$qty * (float)$price;
+                                            $time = $t['time'];
+                                            $action = $t['action'];
+                                            $qty = $t['qty'];
+                                            $price = $t['price'];
+                                            $value = $t['value'];
+                                            $isBuy = str_contains(strtoupper($action), 'BUY');
                                         @endphp
                                         <tr class="border-b border-gray-700/30 hover:bg-white/5 transition-colors">
                                             <td class="py-3 px-2 text-slate-300">{{ $time }}</td>
