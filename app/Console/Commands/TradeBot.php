@@ -20,7 +20,7 @@ class TradeBot extends Command
         Log::info('TradeBot: Starting RSI trading cycle...');
 
         try {
-            $symbol = 'BTCTHB'; // Trading pair
+            $symbol = 'WLDUSDT'; // Trading pair
             $interval = '15m';  // 15-minute timeframe for RSI
 
             // 1. Fetch historical closing prices (last 100 candles)
