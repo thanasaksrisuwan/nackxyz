@@ -9,7 +9,8 @@ provider:
         # App environment variables
         APP_ENV: production
         APP_DEBUG: 'false'
-        APP_KEY: 'base64:xokMH6pmfXbKZ5/8aJaSimaROKV1YKWforGjS4C2rmI='
+        APP_KEY: ${env:APP_KEY}
+        MCP_TOKEN: ${env:MCP_TOKEN, 'mcp-secret-lab-token'}
         # Log to stderr so CloudWatch can capture it
         LOG_CHANNEL: stderr
         # Session and cache must be serverless friendly (array, cookie, or dynamo)

@@ -12,8 +12,19 @@ class McpController extends Controller
      */
     public function handle(Request $request)
     {
-        // Log the incoming request for debugging in CloudWatch
-        Log::info('MCP Request Received:', $request->all());
+        $token = $request->bearerToken();
+        if ($token !== env('MCP_TOKEN', 'mcp-secret-lab-token')) {
+            return response()->json([
+                'jsonrpc' => '2.0',
+                'error' => ['code' => -32099, 'message' => 'Unauthorized']
+            ], 401);
+        }
+
+        // Log the incoming request metadata for debugging in CloudWatch
+        Log::info('MCP Request Received', [
+            'method' => $request->input('method'),
+            'id' => $request->input('id')
+        ]);
 
         $method = $request->input('method');
         $params = $request->input('params', []);
