@@ -41,3 +41,5 @@ jobs:
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           MCP_TOKEN: ${{ secrets.MCP_TOKEN }}
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
