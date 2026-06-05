@@ -17,9 +17,13 @@ class DashboardController extends Controller
         $error = null;
         $balances = [];
         $wldPrice = 0;
+        $priceChange24h = 0;
+        $priceChangePercent = 0;
+        $rsi = 50; // default middle
+        $trades = [];
 
         if (!$apiKey || !$apiSecret) {
-            $error = 'API Keys missing. Please configure BINANCE_API_KEY and BINANCE_API_SECRET in environment.';
+            $error = 'API Keys missing. Please configure BINANCE_API_KEY and BINANCE_API_SECRET.';
         } else {
             // 1. Fetch Balances
             try {
@@ -36,32 +40,101 @@ class DashboardController extends Controller
 
                 if ($response->successful()) {
                     $accountData = $response->json();
-                    // Filter non-zero balances
                     foreach ($accountData['balances'] as $asset) {
                         if ((float)$asset['free'] > 0 || (float)$asset['locked'] > 0) {
                             $balances[] = $asset;
                         }
                     }
                 } else {
-                    $error = 'Failed to fetch account info: ' . $response->body();
+                    $error = 'Binance API Error: ' . $response->body();
                 }
             } catch (\Exception $e) {
                 $error = 'Exception: ' . $e->getMessage();
             }
 
-            // 2. Fetch WLDUSDT Price
+            // 2. Fetch WLDUSDT 24h Ticker
             try {
-                $priceResp = Http::get("{$baseUrl}/api/v1/ticker/price", [
+                $tickerResp = Http::get("{$baseUrl}/api/v1/ticker/24hr", [
                     'symbol' => 'WLDUSDT'
                 ]);
-                if ($priceResp->successful()) {
-                    $wldPrice = $priceResp->json('price');
+                if ($tickerResp->successful()) {
+                    $wldPrice = (float) $tickerResp->json('lastPrice');
+                    $priceChange24h = (float) $tickerResp->json('priceChange');
+                    $priceChangePercent = (float) $tickerResp->json('priceChangePercent');
                 }
+            } catch (\Exception $e) { }
+
+            // 3. Calculate RSI(14)
+            try {
+                $klinesResp = Http::get("{$baseUrl}/api/v1/klines", [
+                    'symbol' => 'WLDUSDT',
+                    'interval' => '15m',
+                    'limit' => 15
+                ]);
+                if ($klinesResp->successful()) {
+                    $klines = $klinesResp->json();
+                    if (count($klines) === 15) {
+                        $closes = array_map(fn($k) => (float)$k[4], $klines);
+                        $rsi = $this->calculateRSI($closes, 14);
+                    }
+                }
+            } catch (\Exception $e) {}
+
+            // 4. Fetch Trades from DynamoDB
+            try {
+                $dynamoDb = new \Aws\DynamoDb\DynamoDbClient([
+                    'region' => env('AWS_DEFAULT_REGION', 'ap-southeast-1'),
+                    'version' => 'latest'
+                ]);
+                $result = $dynamoDb->scan([
+                    'TableName' => env('DYNAMODB_TABLE_TRADES', 'TradesTable'),
+                ]);
+                $items = $result['Items'] ?? [];
+                usort($items, function($a, $b) {
+                    return strcmp($b['Timestamp']['S'] ?? '', $a['Timestamp']['S'] ?? '');
+                });
+                $trades = array_slice($items, 0, 10);
             } catch (\Exception $e) {
-                // Ignore price error silently for dashboard
+                // If DynamoDB not set up, just ignore
             }
         }
 
-        return view('welcome', compact('balances', 'wldPrice', 'error'));
+        // Calculate total portfolio value roughly
+        $totalUsdtValue = 0;
+        foreach ($balances as &$b) {
+            $amt = (float)$b['free'] + (float)$b['locked'];
+            if ($b['asset'] === 'USDT') {
+                $b['usdtValue'] = $amt;
+            } elseif ($b['asset'] === 'WLD') {
+                $b['usdtValue'] = $amt * $wldPrice;
+            } else {
+                $b['usdtValue'] = 0; // Other coins not tracked
+            }
+            $totalUsdtValue += $b['usdtValue'];
+        }
+
+        return view('welcome', compact(
+            'balances', 'wldPrice', 'priceChange24h', 'priceChangePercent',
+            'rsi', 'trades', 'totalUsdtValue', 'error'
+        ));
+    }
+
+    private function calculateRSI(array $closes, int $period = 14): float
+    {
+        if (count($closes) <= $period) return 50.0;
+        
+        $gains = 0; $losses = 0;
+        for ($i = 1; $i <= $period; $i++) {
+            $change = $closes[$i] - $closes[$i - 1];
+            if ($change > 0) $gains += $change;
+            else $losses += abs($change);
+        }
+        
+        $avgGain = $gains / $period;
+        $avgLoss = $losses / $period;
+        if ($avgLoss == 0) return 100.0;
+        
+        $rs = $avgGain / $avgLoss;
+        return 100.0 - (100.0 / (1.0 + $rs));
     }
 }
