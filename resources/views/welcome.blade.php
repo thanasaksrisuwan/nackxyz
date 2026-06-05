@@ -83,6 +83,18 @@
             </div>
         </div>
 
+        <!-- Error Alert -->
+        @if(!empty($error))
+        <div class="glass-card bg-rose-500/10 border-rose-500/50 p-4 rounded-xl flex items-start gap-3">
+            <span class="text-rose-400 text-xl">⚠️</span>
+            <div>
+                <h3 class="text-rose-400 font-bold">Connection Error</h3>
+                <p class="text-rose-300 text-sm mt-1">{{ $error }}</p>
+                <p class="text-slate-400 text-xs mt-2">Please check your BINANCE_API_KEY and BINANCE_API_SECRET in the .env file.</p>
+            </div>
+        </div>
+        @endif
+
         <!-- Main Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -90,9 +102,16 @@
             <div class="space-y-6 lg:col-span-1">
                 
                 <!-- Win Rate Tracker -->
-                <div class="glass-card rounded-3xl p-6 flex justify-between items-center">
+                <div class="glass-card rounded-3xl p-6 flex justify-between items-center relative group">
                     <div>
-                        <h2 class="text-sm font-bold text-slate-400">Win Rate</h2>
+                        <h2 class="text-sm font-bold text-slate-400 flex items-center gap-1 cursor-help">
+                            Simulated Win Rate 
+                            <span class="text-xs">ℹ️</span>
+                        </h2>
+                        <!-- Tooltip -->
+                        <div class="absolute left-6 top-14 bg-gray-900 text-xs text-slate-300 p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-48 z-10 border border-gray-700">
+                            Based on a simulated matching of recent executions since cost basis isn't tracked fully yet.
+                        </div>
                         <p class="text-3xl font-extrabold text-neon-green" id="val-winrate">--%</p>
                     </div>
                     <div class="text-right">
@@ -118,16 +137,26 @@
                     </div>
 
                     <!-- RSI Gauge -->
-                    <div class="mt-6 text-center">
+                    <div class="mt-6 text-center relative">
                         <p class="text-sm text-slate-400 mb-2">RSI Indicator</p>
-                        <div class="w-full bg-gray-800 rounded-full h-4 mb-2 relative overflow-hidden border border-gray-700">
-                            <div class="absolute inset-0 bg-gradient-to-r from-emerald-500 via-gray-600 to-rose-500 opacity-30"></div>
-                            <div id="rsi-bar" class="absolute top-0 h-full bg-electric rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(99,102,241,0.9)]" style="width: {{ max(0, min(100, $rsi)) }}%;"></div>
+                        <div class="w-full bg-gray-800 rounded-full h-2 mt-6 mb-2 relative border border-gray-700">
+                            <!-- Gradient background strip -->
+                            <div class="absolute inset-0 bg-gradient-to-r from-emerald-500 via-gray-600 to-rose-500 opacity-50 rounded-full"></div>
+                            
+                            <!-- Pointer Dot -->
+                            <div id="rsi-pointer" class="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)] border-2 border-gray-900 transition-all duration-1000 z-10" style="left: {{ max(0, min(100, $rsi)) }}%; transform: translate(-50%, -50%);">
+                                <!-- Floating value above pointer -->
+                                <div id="val-rsi" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded shadow-lg border border-gray-700">
+                                    {{ number_format($rsi, 1) }}
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex justify-between text-xs font-bold text-slate-500 px-1">
+                        <div class="flex justify-between text-[10px] font-bold text-slate-500 px-1 mt-4">
+                            <span class="text-emerald-400">0</span>
                             <span class="text-emerald-400">30 (BUY)</span>
-                            <span class="text-white text-lg" id="val-rsi">{{ number_format($rsi, 1) }}</span>
+                            <span>50</span>
                             <span class="text-rose-400">70 (SELL)</span>
+                            <span class="text-rose-400">100</span>
                         </div>
                     </div>
                 </div>
@@ -231,7 +260,7 @@
 
             // RSI
             document.getElementById('val-rsi').innerText = parseFloat(data.rsi).toFixed(1);
-            document.getElementById('rsi-bar').style.width = Math.max(0, Math.min(100, data.rsi)) + '%';
+            document.getElementById('rsi-pointer').style.left = Math.max(0, Math.min(100, data.rsi)) + '%';
 
             // Total Value
             document.getElementById('val-total').innerHTML = `≈ ${parseFloat(data.totalUsdtValue).toFixed(2)} <span class="text-lg text-slate-400">USDT</span>`;
