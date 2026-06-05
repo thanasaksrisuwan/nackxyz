@@ -2,9 +2,19 @@ service: laravel-mcp-lab
 
 provider:
     name: aws
-    # The AWS region in which to deploy
     region: ap-southeast-1
     stage: dev
+
+    # --- FREE TIER: Lambda ---
+    # Free: 1M requests/month + 400,000 GB-seconds/month
+    # Our usage: ~44,000 invocations/month (cron) + dashboard visits << 1M
+    # Memory at 128MB minimizes GB-second consumption
+    memorySize: 128
+
+    # --- FREE TIER: CloudWatch Logs ---
+    # Free: 5GB ingestion/month. Retention prevents unbounded log storage costs.
+    logRetentionInDays: 7
+
     iam:
         role:
             statements:
@@ -18,7 +28,6 @@ provider:
                       - dynamodb:DeleteItem
                   Resource: "arn:aws:dynamodb:${aws:region}:*:table/${self:custom.tableName}"
     environment:
-        # App environment variables
         APP_ENV: production
         APP_DEBUG: 'false'
         APP_KEY: ${env:APP_KEY}
@@ -30,42 +39,48 @@ provider:
         TELEGRAM_CHAT_ID: ${env:TELEGRAM_CHAT_ID, ''}
         ADMIN_USERNAME: ${env:ADMIN_USERNAME, 'admin'}
         ADMIN_PASSWORD: ${env:ADMIN_PASSWORD, 'admin123'}
-        # Log to stderr so CloudWatch can capture it
         LOG_CHANNEL: stderr
-        # Session and cache must be serverless friendly (array, cookie, or dynamo)
         CACHE_STORE: array
         SESSION_DRIVER: cookie
         QUEUE_CONNECTION: sync
-        # Database (Use DynamoDB or leave empty for no DB)
-        # DB_CONNECTION: sqlite
-        # DB_DATABASE: /tmp/database.sqlite
 
 package:
-    # Directories to exclude from deployment
     patterns:
         - '!node_modules/**'
         - '!public/build/**'
         - '!public/storage'
         - '!resources/assets/**'
+        - '!resources/css/**'
+        - '!resources/js/**'
         - '!storage/**'
         - '!tests/**'
+        - '!.github/**'
+        - '!*.md'
+        - '!package.json'
+        - '!package-lock.json'
+        - '!tailwind.config.js'
+        - '!vite.config.js'
+        - '!postcss.config.js'
 
 functions:
-    # This function runs the web application via HTTP API
+    # Web dashboard function
     web:
         handler: public/index.php
         runtime: php-83-fpm
-        timeout: 28 # API Gateway timeout is 29 seconds maximum
+        timeout: 28
         events:
             - httpApi: '*'
-    # This function allows running artisan commands via AWS console or AWS CLI
+
+    # Trade bot cron — runs every 5 minutes to reduce Lambda invocations
+    # FREE TIER: 1 minute = 43,200 invocations/month
+    #            5 minutes = 8,640 invocations/month (72x fewer, safer buffer)
     artisan:
         handler: artisan
         runtime: php-83-console
         timeout: 120
         events:
             - schedule:
-                rate: rate(1 minute)
+                rate: rate(5 minutes)
                 input: '"trade:run"'
 
 custom:
@@ -83,7 +98,26 @@ resources:
                 KeySchema:
                     - AttributeName: id
                       KeyType: HASH
-                BillingMode: PAY_PER_REQUEST
+                # --- FREE TIER: DynamoDB ---
+                # PAY_PER_REQUEST does NOT use the free 25 WCU/25 RCU allowance.
+                # PROVISIONED with 1 WCU + 1 RCU stays well within the free 25 each.
+                BillingMode: PROVISIONED
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 1
+                    WriteCapacityUnits: 1
+
+        # Set CloudWatch log group retention for Lambda functions
+        WebLogGroup:
+            Type: AWS::Logs::LogGroup
+            Properties:
+                LogGroupName: /aws/lambda/${self:service}-production-web
+                RetentionInDays: 7
+
+        ArtisanLogGroup:
+            Type: AWS::Logs::LogGroup
+            Properties:
+                LogGroupName: /aws/lambda/${self:service}-production-artisan
+                RetentionInDays: 7
 
 plugins:
     - ./vendor/bref/bref
