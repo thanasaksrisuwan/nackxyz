@@ -23,16 +23,6 @@ jobs:
       - name: Install Composer Dependencies
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install NPM Dependencies & Build Assets
-        run: |
-          npm install
-          npm run build
-
       - name: Install Serverless Framework
         run: npm install -g serverless@3
 
