@@ -42,9 +42,16 @@ class TradeBot extends Command
             if ($action !== 'HOLD') {
                 $tradeSuccess = $this->executeTestTrade($symbol, $action);
                 
-                // 4. Save to DynamoDB
+                // 4. Save to DynamoDB & Send Telegram Alert
                 if ($tradeSuccess) {
                     $this->logTradeToDynamoDB($symbol, $action, $price);
+                    
+                    $message = "🤖 <b>Binance Bot Alert</b>\n"
+                             . "✅ Test Trade Executed\n"
+                             . "<b>Action:</b> {$action}\n"
+                             . "<b>Symbol:</b> {$symbol}\n"
+                             . "<b>Price:</b> " . number_format($price, 2) . " THB";
+                    $this->sendTelegramAlert($message);
                 }
             }
 
@@ -137,6 +144,28 @@ class TradeBot extends Command
             Log::info("TradeBot: Trade {$tradeId} logged to DynamoDB successfully.");
         } catch (AwsException $e) {
             Log::error("TradeBot: DynamoDB Error - " . $e->getAwsErrorMessage());
+        }
+    }
+
+    private function sendTelegramAlert(string $message)
+    {
+        $botToken = env('TELEGRAM_BOT_TOKEN');
+        $chatId = env('TELEGRAM_CHAT_ID');
+
+        if (!$botToken || !$chatId) {
+            Log::warning('TradeBot: Telegram credentials not set. Skipping notification.');
+            return;
+        }
+
+        try {
+            Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $message,
+                'parse_mode' => 'HTML'
+            ]);
+            Log::info('TradeBot: Telegram alert sent.');
+        } catch (\Exception $e) {
+            Log::error('TradeBot: Failed to send Telegram alert: ' . $e->getMessage());
         }
     }
 }

@@ -26,6 +26,8 @@ provider:
         DYNAMODB_TABLE: ${self:custom.tableName}
         BINANCE_API_KEY: ${env:BINANCE_API_KEY, ''}
         BINANCE_API_SECRET: ${env:BINANCE_API_SECRET, ''}
+        TELEGRAM_BOT_TOKEN: ${env:TELEGRAM_BOT_TOKEN, ''}
+        TELEGRAM_CHAT_ID: ${env:TELEGRAM_CHAT_ID, ''}
         # Log to stderr so CloudWatch can capture it
         LOG_CHANNEL: stderr
         # Session and cache must be serverless friendly (array, cookie, or dynamo)
