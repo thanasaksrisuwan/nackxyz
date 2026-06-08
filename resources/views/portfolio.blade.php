@@ -576,7 +576,6 @@
                 <a href="#" class="active">Home</a>
                 <a href="#projects">Projects</a>
                 <a href="#contact">Contact</a>
-                <a href="{{ route('admin') }}" class="nav-btn">Admin Panel</a>
             </nav>
         </div>
     </header>

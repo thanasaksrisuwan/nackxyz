@@ -73,18 +73,6 @@ functions:
         events:
             - httpApi: '*'
 
-    # Trade bot cron — runs every 5 minutes to reduce Lambda invocations
-    # FREE TIER: 1 minute = 43,200 invocations/month
-    #            5 minutes = 8,640 invocations/month (72x fewer, safer buffer)
-    artisan:
-        handler: artisan
-        runtime: php-83-console
-        timeout: 120
-        events:
-            - schedule:
-                rate: rate(5 minutes)
-                input: '"trade:run"'
-
 custom:
     tableName: ${self:service}-trades-${sls:stage}
 
