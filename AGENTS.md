@@ -1,6 +1,6 @@
 # 🤖 AI Coding Agents: คู่มือและบทบาทผู้ช่วยพัฒนาในโปรเจกต์
 
-ยินดีต้อนรับสู่หน้าระบบการทำงานร่วมกันระหว่าง **คุณ (USER)** และ **Antigravity (AI Coding Assistant)** เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายบทบาท หน้าที่ ตลอดจนแนวทางการทำงานร่วมกันระหว่าง AI Agents และการป้องกันโควตาทรัพยากรระบบเพื่อควบคุมค่าใช้จ่าย
+ยินดีต้อนรับสู่หน้าระบบการทำงานร่วมกันระหว่าง **คุณ (USER)** และ **Antigravity (AI Coding Assistant)** เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายบทบาท หน้าที่ ตลอดจนแนวทางการทำงานร่วมกันระหว่าง AI Agents และข้อบังคับการพัฒนาที่เป็นมาตรฐานสูงสุดของระบบ
 
 ---
 
@@ -24,6 +24,40 @@
 *   **`/schedule`**: ใช้เมื่อต้องการตั้งเวลาทำงานล่วงหน้าหรือตั้งเวลาทำงานซ้ำๆ (เช่น การสั่งให้ AI ตรวจสอบสถานะการ Deploy หรือตรวจสอบ Log การทำงานทุกๆ 1 ชั่วโมง)
 *   **`/grill-me`**: ใช้เมื่อคุณและ AI ต้องการสัมภาษณ์แลกเปลี่ยนความเห็นเกี่ยวกับการออกแบบ (Design Decision) หรือเมื่อคุณต้องการวิเคราะห์ความเสี่ยงและทางเลือกต่างๆ ร่วมกันก่อนลงมือจริง
 *   **`/teamwork-preview`**: ใช้เพื่อดูพรีวิวและจำลองการกระจายงานให้เอเยนต์หลายๆ ตัวเข้ามาทำงานร่วมกันแบบคู่ขนานสำหรับโปรเจกต์ขนาดใหญ่
+
+---
+
+## 🎨 แนวปฏิบัติสำหรับ Senior Designer/Developer (Apple HIG & Web Best Practices)
+
+เพื่อการันตีว่าระบบหน้าบ้าน (Frontend) มีความสวยงามระดับพรีเมียม ตอบสนองดีเยี่ยม และถูกหลักสรีรศาสตร์ดิจิทัล ทีมพัฒนาจะยึดหลักเกณฑ์ดังต่อไปนี้:
+
+### 1. การยึดหลัก Apple Human Interface Guidelines (HIG)
+*   **Clutter-Free & Clarity**: เน้นความสะอาดของ Layout ลดสิ่งรบกวนสายตา ใช้ Negative Space (พื้นที่ว่าง) อย่างสมดุลเพื่อให้ผู้ใช้โฟกัสคอนเทนต์หลักได้ทันที
+*   **Visual Hierarchy**: กำหนดระดับขนาดอักษรและการเน้นสีอย่างชัดเจน ใช้ Font System (เช่น Inter, SF Pro หรือ Outfit) มีความแตกต่างระหว่างหัวข้อหลัก (Heading) และเนื้อหา (Body) ชัดเจน
+*   **Touch & Interactive Targets**: ทุกปุ่มกดหรือลิงก์ต้องมีขนาดพื้นที่กดขั้นต่ำอย่างน้อย 44x44 pt/px เพื่อความสะดวกในการใช้งานบนโทรศัพท์มือถือและลดการกดพลาด
+*   **Feedback & Transitions**: เพิ่มการตอบสนองแบบนุ่มนวล (Micro-animations / Subtle Hover Effects) เพื่อให้ผู้ใช้สัมผัสถึงความสว่างไสวและความมีชีวิตชีวาของระบบ
+
+### 2. เทคนิคและสไตล์เว็บสมัยใหม่ (Modern Web Best Practices)
+*   **Aesthetics first**: ใช้เฉดสีแบบ HSL Tailored (สีที่จัดกลุ่มโทนอย่างสวยงาม) แทนการใช้สีคู่ตรงข้ามที่ฉูดฉาดเกินไป ใช้เทคนิค Glassmorphism (การเบลอหลังการ์ดโปร่งแสง) และ Linear Gradients
+*   **Semantic HTML**: ใช้แท็กตามโครงสร้างจริง เช่น `<header>`, `<main>`, `<section>`, `<footer>` และมีเลย์เอาต์ที่เป็นมิตรกับ SEO
+*   **Accessibility (WCAG)**: ใส่ค่า `alt` บนภาพทุกภาพ และตรวจสอบระดับสีตัดกัน (Contrast Ratio) เพื่อให้ผู้ที่มีความบกพร่องทางสายตาสามารถอ่านได้ง่าย
+
+---
+
+## 🏗️ แนวปฏิบัติสำหรับ Senior Backend Engineer (Architecture & Security)
+
+เพื่อส่งมอบโค้ดหลังบ้านที่ปลอดภัย ขยายผลได้ง่าย และเสถียรสูงสุด ทีมพัฒนาจะใช้หลักการโครงสร้างและการเขียนโค้ดที่ปลอดภัย:
+
+### 1. สถาปัตยกรรมระดับองค์กร (Clean Architecture & Domain-Driven Design)
+*   **Separation of Concerns (SoC)**: แยก Domain Logic ออกจาก HTTP layer หรือ framework infrastructure ชัดเจน (เช่น Controllers ทำหน้าที่เพียงรับคำขอแล้วส่งต่อให้ Service Class ทำงาน)
+*   **Domain-Driven Design (DDD)**: ปกป้อง Business Rules ไว้ในขอบเขตที่เหมาะสม (Bounded Contexts) ตลอดจนการแบ่ง Domain Models, Repositories และ Data Transfer Objects (DTOs) ในโครงสร้างของ Class
+*   **Maintainability & Testability**: เขียนโค้ดตามแนวทาง SOLID Principles เพื่อให้สามารถเขียน Unit Test / Feature Test ครอบคลุมการทำงานได้ง่ายโดยไม่ต้องเชื่อมต่อ database หรือ API จริงผ่านการใช้ Mocking
+
+### 2. การรักษาความปลอดภัยระดับสูงสุด (OWASP Top 10 & Secure Coding)
+*   **Input Validation & Sanitization**: ตรวจสอบความถูกต้องและล้างข้อมูลนำเข้า (Sanitize Inputs) ทุกครั้งผ่าน Laravel Request Validation ป้องกันช่องโหว่ SQL Injection, XSS และ Command Injection
+*   **Broken Access Control**: ยกเลิกระบบล็อกอิน/สิทธิ์เข้าใช้งานใดๆ ที่ไม่ได้ใช้ และกำหนดให้ทุก API Endpoint มีการตรวจสอบสิทธิ์หรือใช้มาตรการปิดกั้นหากไม่ใช่เส้นทางสาธารณะ
+*   **Cryptographic Safeguards**: เก็บข้อมูลสำคัญทั้งหมด เช่น API Token และ Application Key ไว้ในระบบ Environment Variable ที่ปลอดภัย (`.env` ซึ่งถูกข้ามการอัปโหลดผ่าน `.gitignore`) และใช้การเข้ารหัสระดับ AES-256
+*   **Rate Limiting & Anti-Abuse**: นำตัวกรอง Middleware `throttle` ควบคุมและจำกัดจำนวน Requests เพื่อความปลอดภัยต่อวงเงินโควตาฟรี
 
 ---
 
