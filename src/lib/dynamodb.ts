@@ -7,13 +7,8 @@ const clientConfig: any = {
   region,
 };
 
-// If AWS credentials are explicitly provided in environment
-if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-  clientConfig.credentials = {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  };
-}
+// Let the AWS SDK automatically resolve credentials from the environment variables.
+// AWS Lambda injects AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN.
 
 const ddbClient = new DynamoDBClient(clientConfig);
 
