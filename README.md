@@ -1,76 +1,82 @@
-# 📈 Serverless Binance TH Trading Bot
+# 📈 Full-Stack Next.js Binance TH Trading Bot & Portfolio
 
 ## 🎯 Project Overview
-This project is an automated cryptocurrency trading bot specifically designed for **Binance TH**. It is built with a heavy emphasis on **Security (Enterprise Best Practices)** and **Cost-Efficiency (100% AWS Free Tier)**. 
+This project is an automated cryptocurrency trading bot and personal portfolio website. It has been migrated from a Laravel monolith to a modern **Next.js Full-Stack (App Router + Server Actions)** architecture.
 
-The system operates autonomously in the cloud, fetching real-time market data, evaluating custom trading strategies, executing secure trades, and notifying the owner—all without incurring monthly server costs.
-
----
-
-## 🏗️ Architecture & Tech Stack
-The project abandons traditional 24/7 servers (like EC2 or DigitalOcean) in favor of a modern **Event-Driven Serverless Architecture**.
-
-- **Core Framework**: Laravel 11 (PHP 8.3)
-- **Cloud Provider**: AWS (Amazon Web Services)
-- **Serverless Engine**: [Bref](https://bref.sh/) + Serverless Framework (v3)
-- **Compute**: AWS Lambda (Executes code only when triggered, zero idle cost)
-- **Database**: Amazon DynamoDB (Always Free NoSQL database up to 25GB)
-- **Task Scheduler**: AWS EventBridge (Triggers the bot every 1 minute)
-- **CI/CD**: GitHub Actions (Automated deployments)
+The system is optimized for **Security (Enterprise Best Practices)** and **Cost-Efficiency (100% AWS Free Tier)**, executing entirely inside serverless AWS Lambda micro-VMs with no monthly server fees.
 
 ---
 
-## 🔐 Security Standards & Best Practices
-Security is the highest priority in this architecture, designed to completely mitigate the risk of stolen funds or compromised servers:
-
-1. **Zero Hardcoded Secrets**: `BINANCE_API_KEY`, `BINANCE_API_SECRET`, Telegram tokens, and Admin credentials are strictly managed via **GitHub Secrets**. They are never committed to the Git repository.
-2. **Ephemeral Compute**: Because it runs on AWS Lambda, there is no physical or virtual server for hackers to SSH into. The environment is destroyed and recreated constantly.
-3. **IAM Least Privilege**: The AWS Lambda execution role is strictly scoped to only allow reading and writing to the specific DynamoDB `TradesTable` and nothing else.
-4. **Cryptographic Signing**: All Binance API requests are signed dynamically using HMAC SHA-256 with timestamp validation to prevent Replay Attacks.
-5. **Secure Dashboard Access**: The public-facing endpoint is protected by Basic Authentication. Credentials are dynamically injected at deploy-time via GitHub Secrets.
-
----
-
-## 🚀 Features Implemented
-
-### 1. Advanced Trading Brain (`TradeBot.php`)
-- An artisan command (`trade:run`) serves as the bot's brain.
-- Automatically invoked every 1 minute by AWS EventBridge.
-- Currently tracking the **WLDUSDT** trading pair.
-- **RSI Algorithm**: Fetches 15-minute K-lines (last 100 candles), applies Wilder's Smoothing Method to calculate the Relative Strength Index (RSI).
-- **Position State Constraints**: Checks live account balances to prevent double-buying spam. Only buys if holding < $5 worth of WLD.
-- **Dynamic Quantity**: Automatically calculates the amount of WLD to buy based on a fixed $15 USDT budget to seamlessly bypass the Binance `MIN_NOTIONAL` filter.
-- **Clock Drift Protection**: Includes a `recvWindow` of 10000ms to prevent `-1021 INVALID_TIMESTAMP` rejections from Binance.
-
-### 2. Live Secure Dashboard
-- A premium, glassmorphism-styled web interface accessible at the root URL.
-- Protected by HTTP Basic Authentication middleware.
-- Displays real-time `WLDUSDT` prices and enumerates all non-zero asset balances directly from the Binance TH account.
-
-### 3. Immutable Trade Logging
-- All successful trade decisions (Action, Price, Quantity, Symbol, Timestamp) are permanently recorded in an **Amazon DynamoDB** table (`TradesTable`) for performance tracking and auditing.
-
-### 4. Real-Time Telegram Notifications
-- Implemented an ultra-low-latency alert system. Upon any successful trade execution, a formatted HTML alert is fired instantly to the owner's private Telegram chat using the Telegram Bot API.
+## 🏗️ Tech Stack
+- **Core Framework**: Next.js 16 (App Router + React Server Components)
+- **Database**: Amazon DynamoDB (NoSQL database, 100% stateless cloud persistence)
+- **Web Services & Actions**: React Server Actions (`"use server"`)
+- **API Request Interception**: Next.js 16 `proxy.ts` (Basic HTTP Authentication)
+- **Trading Chart**: TradingView Lightweight-Charts Engine
+- **Task Scheduler**: AWS EventBridge (Triggers the bot every 5 minutes to run RSI/EMA trading cycles)
+- **Deployment**: Serverless Framework v3 + GitHub Actions
 
 ---
 
-## 🔧 Setup & Deployment
-This project uses GitHub Actions for CI/CD. To deploy to your own AWS account, configure the following secrets in your GitHub Repository:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `BINANCE_API_KEY`
-- `BINANCE_API_SECRET`
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHAT_ID`
-- `ADMIN_USERNAME` (For Dashboard Login)
-- `ADMIN_PASSWORD` (For Dashboard Login)
-
-Pushing to the `main` branch will automatically trigger the deployment to AWS Lambda.
+## 🔐 Security Standards
+1. **Zero Hardcoded Secrets**: All keys (`BINANCE_API_KEY`, `BINANCE_API_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `MCP_TOKEN`) are dynamically injected via GitHub Secrets at deploy-time or loaded from local `.env` files.
+2. **Proxy Interceptor**: Compliance with Next.js 16's naming conventions using `src/proxy.ts` to intercept requests and protect `/admin` and `/dashboard` panels.
+3. **IAM Least Privilege**: AWS credentials only have permissions to scan/query/get/write to the specific DynamoDB table.
+4. **Cryptographic Signing**: All Binance API requests are signed dynamically using HMAC SHA-256 with timestamp validation and `recvWindow` synchronization.
 
 ---
 
-## ⏭️ Roadmap
-- [ ] Monitor Test Orders (`/api/v3/order/test`) to validate RSI threshold accuracy.
-- [ ] Switch to Production Mode by removing the `/test` endpoint from `TradeBot.php`.
+## 🚀 Key Functional Features
+
+### 1. Automated Strategy Engine (`/api/trade`)
+- The trading brain operates as a Next.js API route `/api/trade` secured by the `MCP_TOKEN` request header.
+- Triggered automatically by EventBridge schedules (packaged inside the main handler in `lambda.js`).
+- Uses Wilder's Smoothing Method for calculating **RSI(14)** and an Exponential Moving Average (**EMA200**).
+- **Position Constraint**: Only buys if the existing base asset balance is worth less than $5 USDT.
+- **Stop-Loss Protection**: Forcibly triggers a market SELL to cut losses if prices drop more than 5% below the last trade entry price.
+- **Circuit Breakers**: Pauses trading instantly if daily loss reaches the custom limit (e.g. $5 USDT) or if drawdown from peak equity reaches the limit (e.g. 10%).
+
+### 2. Live Secure Dashboard (`/dashboard`)
+- Protected by browser Basic HTTP Authentication.
+- Displays live ticker metrics (WLDUSDT or configured symbol), Calculated RSI, total portfolio value, and active base asset position values.
+- Renders an interactive TradingView Candlestick Chart.
+- Displays the last 15 trade executions directly queried from the Binance TH exchange (Single Source of Truth).
+- Allows editing of thresholds (`rsi_buy`, `rsi_sell`, budgets, symbol, timeframe) dynamically using Server Actions.
+
+### 3. Projects Administration (`/admin`)
+- Allows addition of new portfolio projects and deletion of existing ones.
+- Persisted in DynamoDB with a fallback default projects list if the database is unpopulated.
+
+---
+
+## 🔧 Setup & Development
+
+### 1. Local Setup
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
+2. Configure your environment variables in `.env`:
+   ```env
+   BINANCE_API_KEY=your_binance_api_key
+   BINANCE_API_SECRET=your_binance_api_secret
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   TELEGRAM_CHAT_ID=your_telegram_chat_id
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=admin123
+   MCP_TOKEN=mcp-secret-lab-token
+   DYNAMODB_TABLE=laravel-mcp-lab-trades-dev
+   AWS_ACCESS_KEY_ID=your_aws_key
+   AWS_SECRET_ACCESS_KEY=your_aws_secret
+   AWS_DEFAULT_REGION=ap-southeast-1
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+### 2. AWS Lambda Deployment
+Pushing commits to the `main` branch triggers the GitHub Actions workflow which:
+1. Installs Node.js dependencies.
+2. Runs `npm run build` which compiles Next.js in `standalone` output mode and stages assets via `scripts/postbuild.js`.
+3. Invokes `serverless deploy --stage production` to deploy the package to AWS Lambda.

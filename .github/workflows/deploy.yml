@@ -1,16 +1,9 @@
-name: Deploy to AWS Lambda (Always Free Tier)
-
-# GitHub Free Tier:
-#   - Public repo  → Unlimited Actions minutes (FREE forever) ✅
-#   - Private repo → 2,000 minutes/month free
-# This repo is PUBLIC so minutes are unlimited.
-# We still optimize to keep each run fast (~3-4 min target).
+name: Deploy Next.js to AWS Lambda (Always Free Tier)
 
 on:
   push:
     branches:
       - main
-    # Only trigger when relevant files change — skip docs/readme-only commits
     paths-ignore:
       - '**.md'
       - '.cursorrules'
@@ -19,59 +12,40 @@ on:
 jobs:
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest   # Linux = 1x minute multiplier (cheapest runner)
+    runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, bcmath
-          # Cache PHP extensions to speed up setup
-          coverage: none
-          tools: composer:v2
-
-      # Cache composer vendor directory — saves ~60s on every run
-      - name: Cache Composer Dependencies
-        id: composer-cache
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
-
-      - name: Install Composer Dependencies
-        if: steps.composer-cache.outputs.cache-hit != 'true'
-        run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
-
-      # When cache hits, still run autoload dump to ensure class maps are fresh
-      - name: Optimize Autoloader (cache hit)
-        if: steps.composer-cache.outputs.cache-hit == 'true'
-        run: composer dump-autoload --optimize --no-dev --no-interaction
-
-      # Cache npm to speed up tailwind install
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-tailwind-${{ hashFiles('package-lock.json') }}
-          restore-keys: npm-tailwind-
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Build production CSS with Tailwind CLI (not full Vite build)
-      # Output is inlined into the blade template via file_get_contents()
-      - name: Build Tailwind CSS
-        run: |
-          npm install
-          npx tailwindcss -i ./resources/css/app.css -o ./public/css/app.css --minify
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-nextjs-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-nextjs-
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Next.js standalone
+        run: npm run build
+        env:
+          # Build-time environment configs
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          MCP_TOKEN: ${{ secrets.MCP_TOKEN }}
+          AWS_DEFAULT_REGION: ap-southeast-1
 
       - name: Install Serverless Framework
         run: npm install -g serverless@3
@@ -86,11 +60,10 @@ jobs:
       - name: Serverless Deploy
         run: serverless deploy --stage production
         env:
-          APP_KEY: ${{ secrets.APP_KEY }}
-          MCP_TOKEN: ${{ secrets.MCP_TOKEN }}
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          MCP_TOKEN: ${{ secrets.MCP_TOKEN }}
