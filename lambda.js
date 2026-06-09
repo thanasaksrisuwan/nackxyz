@@ -18,8 +18,54 @@ const nextServer = new NextServer({
 
 const handler = nextServer.getRequestHandler();
 
+const fs = require("fs");
 const serverlessHandler = serverless(async (req, res) => {
+  const parsedUrl = new URL(req.url, "http://localhost");
+  const pathname = parsedUrl.pathname;
+
+  // Intercept and serve static files manually
+  if (pathname.startsWith("/_next/static/") || pathname.startsWith("/public/") || pathname === "/favicon.ico") {
+    let filePath;
+    if (pathname.startsWith("/_next/static/")) {
+      filePath = path.join(__dirname, ".next", "static", pathname.replace("/_next/static/", ""));
+    } else if (pathname === "/favicon.ico") {
+      filePath = path.join(__dirname, "public", "favicon.ico");
+    } else {
+      filePath = path.join(__dirname, "public", pathname.replace("/public/", ""));
+    }
+
+    try {
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(pathname) || ".ico";
+        const mimeTypes = {
+          ".js": "application/javascript",
+          ".css": "text/css",
+          ".woff2": "font/woff2",
+          ".woff": "font/woff",
+          ".ttf": "font/ttf",
+          ".png": "image/png",
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".svg": "image/svg+xml",
+          ".ico": "image/x-icon",
+          ".json": "application/json",
+          ".txt": "text/plain",
+        };
+        const contentType = mimeTypes[ext] || "application/octet-stream";
+        const content = fs.readFileSync(filePath);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.end(content);
+        return;
+      }
+    } catch (e) {
+      console.error("Error serving static file:", e);
+    }
+  }
+
   return handler(req, res);
+}, {
+  binary: ["*/*"]
 });
 
 module.exports.handler = async (event, context) => {
