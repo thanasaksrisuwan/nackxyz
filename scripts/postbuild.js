@@ -34,4 +34,12 @@ if (fs.existsSync(staticDir)) {
   console.log("Copied .next/static assets to standalone folder.");
 }
 
+// 4. Copy serverless-http since Next.js tracer won't include it (it's only used in lambda.js)
+const srcServerlessHttp = path.join(rootDir, "node_modules", "serverless-http");
+const destServerlessHttp = path.join(standaloneDir, "node_modules", "serverless-http");
+if (fs.existsSync(srcServerlessHttp)) {
+  fs.cpSync(srcServerlessHttp, destServerlessHttp, { recursive: true });
+  console.log("Copied serverless-http to standalone/node_modules.");
+}
+
 console.log("Post-build asset staging completed successfully!");
