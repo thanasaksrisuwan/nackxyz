@@ -12,7 +12,8 @@ const nextServer = new NextServer({
   port: 3000,
   dir: path.join(__dirname),
   dev: false,
-  config: requiredFiles.config,
+  customServer: false,
+  conf: requiredFiles.config,
 });
 
 const handler = nextServer.getRequestHandler();
