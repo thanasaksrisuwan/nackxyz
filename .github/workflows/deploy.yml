@@ -32,7 +32,7 @@ jobs:
           restore-keys: npm-nextjs-
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Next.js standalone
         run: npm run build
