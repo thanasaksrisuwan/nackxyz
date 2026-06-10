@@ -28,8 +28,6 @@ functions:
     handler: src/index.handler
     events:
       - httpApi: '*'
-    url:
-      cors: true
 
 resources:
   Resources:
@@ -44,5 +42,6 @@ resources:
           - AttributeName: archetypeId
             KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 25
-          WriteCapacityUnits: 25
+          ReadCapacityUnits: 20
+          WriteCapacityUnits: 20
+

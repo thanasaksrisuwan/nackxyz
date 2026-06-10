@@ -1,6 +1,9 @@
 # prod
 dist/
 lambda.zip
+.serverless/
+.esbuild/
+
 
 # dev
 .yarn/
