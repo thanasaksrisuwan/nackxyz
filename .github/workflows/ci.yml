@@ -61,10 +61,54 @@ jobs:
           npm run build
 
       - name: Deploy Backend to AWS
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.AWS_ACCESS_KEY_ID != ''
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.AWS_ACCESS_KEY_ID != ''
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           cd backend
           npx --no-install serverless deploy
+
+      - name: Update Cloudflare DNS and Enable Proxy
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ZONE_ID != ''
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          RECORD_NAME="api.nackxyz.com"
+          AWS_ENDPOINT="p5oewgfhsi.execute-api.ap-southeast-1.amazonaws.com"
+          
+          echo "Checking if DNS record for $RECORD_NAME exists..."
+          SEARCH_RES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$RECORD_NAME" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            -H "Content-Type: application/json")
+          
+          RECORD_ID=$(echo "$SEARCH_RES" | node -e "
+            const fs = require('fs');
+            try {
+              const data = JSON.parse(fs.readFileSync(0, 'utf-8'));
+              if (data.result && data.result.length > 0) {
+                console.log(data.result[0].id);
+              } else {
+                console.log('');
+              }
+            } catch (e) {
+              console.log('');
+            }
+          ")
+          
+          if [ -n "$RECORD_ID" ]; then
+            echo "Record exists with ID: $RECORD_ID. Updating CNAME and enabling Proxy..."
+            curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"$RECORD_NAME\",\"content\":\"$AWS_ENDPOINT\",\"ttl\":1,\"proxied\":true}"
+          else
+            echo "Record does not exist. Creating CNAME and enabling Proxy..."
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"$RECORD_NAME\",\"content\":\"$AWS_ENDPOINT\",\"ttl\":1,\"proxied\":true}"
+          fi
+          echo "DNS configuration complete!"
+
