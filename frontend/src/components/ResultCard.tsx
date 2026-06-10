@@ -118,16 +118,29 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
             </div>
           </div>
 
-          {/* CHARACTER QUOTE & ROAST */}
-          <div className="z-10 bg-black/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col gap-2.5 my-4">
-            <p className="text-sm font-semibold italic text-white/90 leading-relaxed">
+          {/* CHARACTER QUOTE, ROAST & DYNAMIC CONVICTION */}
+          <div className="z-10 bg-black/35 backdrop-blur-md border border-white/10 p-4 rounded-2xl flex flex-col gap-2 my-1">
+            <p className="text-xs font-semibold italic text-white/90 leading-relaxed">
               {archetype.quote}
             </p>
             <div className="w-full h-[1px] bg-white/10" />
-            <p className="text-xs text-white/70 leading-relaxed font-mono">
+            <p className="text-[10px] text-white/70 leading-relaxed font-mono">
               <span className="text-red-300/90 font-bold uppercase mr-1">System Roast:</span>
               {archetype.roast}
             </p>
+            {archetype.judgements && archetype.judgements.length > 0 && (
+              <>
+                <div className="w-full h-[1px] bg-white/10" />
+                <div className="flex flex-col gap-1 font-mono text-[9px] text-amber-200/90">
+                  <span className="text-red-400 font-bold uppercase">Court Conviction:</span>
+                  {archetype.judgements.map((judgement, idx) => (
+                    <p key={idx} className="leading-relaxed pl-2 relative before:content-['•'] before:absolute before:left-0 before:text-red-400">
+                      {judgement}
+                    </p>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* STATS VISUALIZATION */}

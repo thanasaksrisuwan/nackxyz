@@ -18,104 +18,93 @@ export interface Archetype {
   accentColor: string;
   stats: ArchetypeStats;
   roast: string;
+  judgements?: string[];
 }
 
 export const ARCHETYPES: Record<string, Archetype> = {
-  chaos_coder: {
-    id: 'chaos_coder',
-    title: 'The Chaos Coder',
-    emoji: '🌪️',
-    description: 'You write code that works, but only God and your console logs know why. You test in production, ignore linting errors, and live on the edge.',
-    quote: '"It compiled once on my local machine, so I pushed it straight to main."',
-    gradient: 'from-amber-500 via-orange-600 to-red-600',
-    textColor: 'text-amber-200',
-    accentColor: '#f59e0b',
-    stats: { speed: 95, order: 10, logic: 60, aesthetics: 35 },
-    roast: 'Your Git history is 90% "fix" and "wip". You think type checkers are a conspiracy against freedom of speech.'
-  },
-  tenx_architect: {
-    id: 'tenx_architect',
-    title: 'The 10x Architect',
-    emoji: '🏛️',
-    description: 'Why write 10 lines of code when you can build a 1,000-line multi-layered system with interfaces, factories, context providers, and Docker recipes?',
-    quote: '"We must migrate this static blog to a multi-region serverless Kubernetes microservice mesh."',
-    gradient: 'from-blue-600 via-indigo-700 to-purple-800',
-    textColor: 'text-blue-200',
-    accentColor: '#3b82f6',
-    stats: { speed: 20, order: 95, logic: 85, aesthetics: 50 },
-    roast: 'You spend more time drawing UML diagrams than shipping features. You build spaceships to cross the street.'
-  },
-  overflow_paster: {
-    id: 'overflow_paster',
-    title: 'The Copy-Paste Expert',
-    emoji: '📋',
-    description: 'Why reinvent the wheel? If someone solved it on StackOverflow 9 years ago, it is good enough. You copy, paste, tweak one variable, and pray.',
-    quote: '"I do not know what this regex does, but it successfully resolved our production incident."',
-    gradient: 'from-orange-500 via-amber-500 to-yellow-600',
-    textColor: 'text-orange-200',
-    accentColor: '#f97316',
-    stats: { speed: 85, order: 25, logic: 40, aesthetics: 45 },
-    roast: 'Your coding style changes on every line depending on which snippet you copied. Your keyboard only has Ctrl, C, and V keys left.'
-  },
-  clean_coder: {
-    id: 'clean_coder',
-    title: 'The Clean Code Zealot',
-    emoji: '✨',
-    description: 'You worship Robert C. Martin. You would rather delay a feature release by 3 weeks than commit code with improper indentation or long functions.',
-    quote: '"This function is 6 lines long. It violates the Single Responsibility Principle and must be refactored."',
-    gradient: 'from-emerald-500 via-teal-600 to-cyan-700',
-    textColor: 'text-emerald-200',
-    accentColor: '#10b981',
-    stats: { speed: 30, order: 100, logic: 80, aesthetics: 60 },
-    roast: 'You refactor code that has never been run and never will be. Your codebase is a museum: beautiful, but dead.'
-  },
-  grindset_leet: {
-    id: 'grindset_leet',
-    title: 'The Grindset Leetcoder',
-    emoji: '🧠',
-    description: 'You solve LeetCode Hard problems for fun. You dream in binary trees, measure conversations in Big O complexity, and optimize your coffee breaks.',
-    quote: '"That conversation had O(N^2) space-time complexity. I will have to optimize my social loop."',
-    gradient: 'from-purple-600 via-pink-600 to-rose-700',
-    textColor: 'text-purple-200',
+  deadline_necromancer: {
+    id: 'deadline_necromancer',
+    title: 'Deadline Necromancer',
+    emoji: '🪄',
+    description: 'คุณคือผู้ชุบชีวิตโปรเจกต์จากความตายในคืนสุดท้ายก่อนเดดไลน์ สร้างไฟป่าขึ้นมาเองแล้ววิ่งไปดับไฟของตัวเองเพื่อเอาหน้า ปลุกวิญญาณโค้ดผุๆ ให้วิ่งได้ก่อนเช้าวันจันทร์',
+    quote: '"เดดไลน์ไม่ใช่ขีดจำกัด แต่เป็นความเร็วต้นในการเร่งงาน"',
+    gradient: 'from-violet-600 via-purple-600 to-fuchsia-600',
+    textColor: 'text-violet-200',
     accentColor: '#8b5cf6',
-    stats: { speed: 70, order: 80, logic: 100, aesthetics: 20 },
-    roast: 'You can balance a red-black tree in your sleep, but you cannot figure out how to center a div in CSS.'
+    stats: { speed: 99, order: 15, logic: 80, aesthetics: 40 },
+    roast: 'คุณเขียนโค้ดได้เร็วเป็น 10 เท่าในเวลา 2 ชั่วโมงสุดท้าย แต่ถ้ามีเวลา 2 สัปดาห์ คุณจะนอนดูแมวในยูทูปอยู่ 13 วันกับ 22 ชั่วโมง'
   },
-  prompt_engineer: {
-    id: 'prompt_engineer',
-    title: 'The AI Prompt Master',
-    emoji: '🤖',
-    description: 'Writing code is so last century. You write detailed prompts. You command Claude and ChatGPT to code, debug, and deploy while you sip matcha.',
-    quote: '"Claude, review my code, write unit tests, and write a polite response to my project manager."',
-    gradient: 'from-cyan-500 via-sky-500 to-blue-600',
-    textColor: 'text-cyan-200',
-    accentColor: '#06b6d4',
-    stats: { speed: 90, order: 50, logic: 60, aesthetics: 70 },
-    roast: 'If your internet connection drops or Claude goes down, your development capacity drops to zero.'
+  emotional_support: {
+    id: 'emotional_support',
+    title: 'Emotional Support Human',
+    emoji: '🧸',
+    description: 'แบตสำรองฉุกเฉินของมนุษยชาติ ปลอบใจเพื่อนเก่งมาก ทักษะจิตวิทยาเป็นเลิศ แต่ห้องนอนและตารางงานตัวเองเละเทะจนเยียวยาไม่ได้',
+    quote: '"ไม่เป็นไรนะแก บั๊กนี้ใครๆ ก็เจอกันได้ เดี๋ยวเราค่อยๆ ร้องไห้แล้วแก้ไปด้วยกัน"',
+    gradient: 'from-emerald-400 via-teal-500 to-cyan-600',
+    textColor: 'text-emerald-100',
+    accentColor: '#10b981',
+    stats: { speed: 45, order: 20, logic: 50, aesthetics: 80 },
+    roast: 'ปลอบใจคนอื่นเก่งสุดขีด แต่ห้องตัวเองซักผ้าแล้วยังไม่ได้ตากมา 3 วัน ปัญหาชีวิตรุมเร้าแต่พร้อมนั่งฟังเพื่อนบ่นเรื่องบั๊ก 4 ชั่วโมง'
   },
-  terminal_ninja: {
-    id: 'terminal_ninja',
-    title: 'The Terminal Ninja',
-    emoji: '🥷',
-    description: 'A mouse? Web browser? You live in a terminal window. You navigate code at the speed of light using Vim motions and customized shell plugins.',
-    quote: '":wq is not just a command, it is my lifestyle."',
-    gradient: 'from-zinc-700 via-slate-800 to-zinc-950',
-    textColor: 'text-zinc-300',
+  dopamine_investor: {
+    id: 'dopamine_investor',
+    title: 'Dopamine Investor',
+    emoji: '💸',
+    description: 'มนุษย์ Flash Sale เดินได้ ผู้ใช้เงินเยียวยาจิตใจที่เกิดจากการดองงานของตัวเอง ซื้อคอร์สเรียน 50 คอร์ส (เรียนจบ 0) ซื้ออุปกรณ์ระดับท็อปเพื่อมาเขียนควิซตลกๆ',
+    quote: '"การช็อปปิ้งคือการลงทุนรูปแบบหนึ่ง เดี๋ยวถ้าคีย์บอร์ดใหม่มาถึง งานจะเสร็จใน 5 นาที"',
+    gradient: 'from-amber-400 via-orange-500 to-yellow-600',
+    textColor: 'text-amber-100',
+    accentColor: '#f59e0b',
+    stats: { speed: 50, order: 45, logic: 55, aesthetics: 90 },
+    roast: 'มีคีย์บอร์ด Custom ราคาหมื่นห้า โต๊ะคอมปรับระดับหลักหมื่น แต่เอามาเปิดส่องหน้าจอดองงานและสกรอลล์หาของใน Shopee'
+  },
+  productivity_tourist: {
+    id: 'productivity_tourist',
+    title: 'The Productivity Tourist',
+    emoji: '🎒',
+    description: 'นักท่องเที่ยวสาย Productivity ผู้เปลี่ยนแอปจดโน้ตและเปลี่ยนธีมหน้าจอ Notion ทุกๆ 2 วัน ดูคลิปสอนจัดเวลาชีวิต 4 ชั่วโมง แต่งานจริงคืบหน้า 0 นาที',
+    quote: '"ขอเวลาอีก 2 ชั่วโมงจัดโครงสร้าง Obsidian แป๊บ คราวนี้ระบบงานจะไร้รอยต่อแน่ๆ"',
+    gradient: 'from-rose-500 via-red-600 to-amber-700',
+    textColor: 'text-rose-200',
+    accentColor: '#ef4444',
+    stats: { speed: 10, order: 90, logic: 30, aesthetics: 70 },
+    roast: 'คุณมีคู่มือจัดการชีวิตที่สมบูรณ์แบบ มีระบบ GTD ลื่นไหล แต่ไม่มีผลงานชิ้นไหนถูกเขียนออกมาใช้จริงเลยสักกะอย่าง'
+  },
+  functional_zombie: {
+    id: 'functional_zombie',
+    title: 'Functional Zombie',
+    emoji: '🧟',
+    description: 'ถ้ากลุ่มนี้กำลังจะตาย คุณคือศพเดียวที่ยังกดส่งไฟล์ถูกเวอร์ชัน แววตาไร้วิญญาณ ไหลไปเรื่อยๆ ตามแรงโน้มถ่วงของระบบองค์กร ทำงานด้วยระบบประสาทอัตโนมัติ',
+    quote: '"ครับ... ได้ครับ... กำลังทำอยู่ครับ... (พิมพ์ด้วยตาที่กึ่งปิดกึ่งเปิด)"',
+    gradient: 'from-zinc-500 via-slate-600 to-neutral-800',
+    textColor: 'text-zinc-200',
     accentColor: '#71717a',
-    stats: { speed: 90, order: 75, logic: 90, aesthetics: 30 },
-    roast: 'You spend 40 hours a week configuring your Neovim status bar. Nobody else can type on your keyboard.'
+    stats: { speed: 60, order: 70, logic: 60, aesthetics: 30 },
+    roast: 'คุณมีชีวิตรอดด้วยคาเฟอีนและน้ำตาล แววตาไร้ประกายไฟ แต่อีเมลรายงานบั๊กและส่งไฟล์กลับไม่เคยพลาด น่ากลัวในความเสถียรแบบไร้วิญญาณ'
   },
-  pixel_perfectionist: {
-    id: 'pixel_perfectionist',
-    title: 'The Pixel Perfectionist',
-    emoji: '🎨',
-    description: 'Web development is your canvas. If a border-radius is 1px off or a transition curve is linear instead of cubic-bezier, you cannot sleep at night.',
-    quote: '"The shadow blur on this button is off. Let me rewrite the Tailwind theme configuration."',
-    gradient: 'from-fuchsia-500 via-pink-500 to-rose-600',
-    textColor: 'text-fuchsia-200',
-    accentColor: '#d946ef',
-    stats: { speed: 50, order: 70, logic: 55, aesthetics: 100 },
-    roast: 'You spend 5 hours animating a button hover state, only to find out the backend API it calls has been broken for two weeks.'
+  chaos_ceo: {
+    id: 'chaos_ceo',
+    title: 'Chaos CEO',
+    emoji: '👑',
+    description: 'บ้าอำนาจและชอบควบคุมทุกอย่าง (Control Freak) เพราะไม่เชื่อใจว่ามนุษย์หน้าไหนจะทำได้ดั่งใจ ชนทุกปัญหาและทำให้เรื่องยุ่งเหยิงฉิบหายสำเร็จได้จริงแบบปาฏิหาริย์',
+    quote: '"เดี๋ยวฉันจัดการเอง หลบไป! (แล้วลงมาเขียนโค้ดสปาเก็ตตี้ที่ไม่มีใครกล้าแตะ)"',
+    gradient: 'from-amber-600 via-yellow-500 to-cyan-500',
+    textColor: 'text-amber-200',
+    accentColor: '#d97706',
+    stats: { speed: 95, order: 30, logic: 70, aesthetics: 60 },
+    roast: 'คุณคือระเบิดเวลาที่แบกทีมสำเร็จแบบถูลู่ถูกัง คนอื่นกลัวคุณมากกว่าบั๊กในโค้ดเสียอีก'
+  },
+  accidental_genius: {
+    id: 'accidental_genius',
+    title: 'Accidental Genius',
+    emoji: '🎲',
+    description: 'ขี้เกียจวางแผน ไร้ระบบระเบียบขั้นสุด เป็นไอ้คนดวงดีที่ทำอะไรมั่วๆ หน้างาน แต่ดันเวิร์กและผลลัพธ์ออกมาเสถียรแบบไร้สาเหตุจนทุกคนหมั่นไส้',
+    quote: '"เหรอ? กดยังไงก็ไม่รู้แหละ แต่อยู่ดีๆ มันก็รันผ่านแล้ว ชิลๆ"',
+    gradient: 'from-purple-500 via-indigo-500 to-emerald-500',
+    textColor: 'text-purple-100',
+    accentColor: '#a855f7',
+    stats: { speed: 85, order: 10, logic: 95, aesthetics: 40 },
+    roast: 'คุณไม่ใช่คนเก่ง คุณเป็นเพียงตัวบั๊กในระบบสถิติความน่าจะเป็นที่เทพธิดาแห่งโชคลาภอุ้มไว้เท่านั้น'
   }
 }
 
@@ -130,17 +119,49 @@ export const ROAST_MESSAGES = [
   'Checking if you actually write tests...'
 ]
 
+export const generateJudgement = (tags: string[]): string[] => {
+  const sentences: string[] = []
+  
+  if (tags.includes('จัดระบบ')) {
+    sentences.push("ศาลพิจารณาแล้วเห็นว่า จำเลยใช้เวลาไปกับการเตรียมตัวและเลือกเครื่องมือ มากกว่าเวลาลงมือทำจริงถึง 312%")
+  }
+  if (tags.includes('ดองงาน')) {
+    sentences.push("จากหลักฐานมัดตัว จำเลยเชื่อมั่นอย่างฝังหัวว่า 'Future Me' หรือตัวเองในอนาคต เป็นยอดมนุษย์ที่เก่งกว่าปัจจุบันเสมอ")
+  }
+  if (tags.includes('หนีปัญหา')) {
+    sentences.push("จำเลยมีพฤติกรรมเปลี่ยนคำว่า 'เดี๋ยวค่อยทำ' ให้กลายเป็น 'ทำไมกูยังไม่ทำ' ซ้ำๆ จนเข้าขั้นสันดาน")
+  }
+  if (tags.includes('แบกเพื่อน')) {
+    sentences.push("พบหลักฐานแน่ชัดว่า จำเลยเป็นแบตสำรองฉุกเฉินระดับโลก ใจดีกับคนอื่นไปทั่วแต่ปล่อยชีวิตตัวเองไฟลุกท่วม")
+  }
+  if (tags.includes('ช็อปปิ้ง')) {
+    sentences.push("จำเลยมักพยายามหาซื้ออุปกรณ์ไอทีราคาแพงเพื่ออ้างว่า 'ช่วยแก้ไขจิตใจและการดองงาน'")
+  }
+  if (tags.includes('ลนลาน')) {
+    sentences.push("จำเลยมักแก้บั๊กบนโปรดักชันด้วยความตระหนกสูง โดยอัดความเร็วการพิมพ์โค้ดเหมือนนกพิราบจิกคีย์บอร์ด")
+  }
+  if (tags.includes('ส่งเดช')) {
+    sentences.push("จำเลยมีประวัติโยนบั๊กให้เพื่อนร่วมทีมแล้วปิดคอมพาร์ทิชันนอน เพื่อรักษาความสงบสุขส่วนตน")
+  }
+
+  if (sentences.length === 0) {
+    sentences.push("ศาลไม่พบคุณความดีใดๆ ในการกระทำ มีเพียงร่องรอยการขยับเมาส์ไปวันๆ เพื่อหลบหน้าหัวหน้า")
+    sentences.push("จำเลยมักเลี่ยงการตอบคำถามสำคัญด้วยการพิมพ์คำว่า 'ครับ... ได้ครับ... กำลังทำอยู่ครับ'")
+  }
+
+  return sentences.slice(0, 3)
+}
+
 export function calculateResult(answers: Record<number, number>): Archetype {
   const scores: Record<string, number> = {
-    chaos_coder: 0,
-    tenx_architect: 0,
-    overflow_paster: 0,
-    clean_coder: 0,
-    grindset_leet: 0,
-    prompt_engineer: 0,
-    terminal_ninja: 0,
-    pixel_perfectionist: 0
+    deadline_necromancer: 0,
+    emotional_support: 0,
+    dopamine_investor: 0,
+    productivity_tourist: 0,
+    functional_zombie: 0
   }
+
+  const tags: string[] = []
 
   // Iterate over each question answered
   Object.entries(answers).forEach(([qIdStr, optionIdx]) => {
@@ -157,13 +178,38 @@ export function calculateResult(answers: Record<number, number>): Archetype {
         scores[archetype] += val
       }
     })
+
+    // Accumulate tags if present
+    if ((option as any).tags) {
+      tags.push(...(option as any).tags)
+    }
   })
+
+  // 1. Check for Mythic Rare (5% drop rate)
+  const isMythicChance = Math.random() < 0.05
+
+  // 2. Check for extreme pattern (same option index selected 5 or more times)
+  const selectedIndexes = Object.values(answers)
+  const indexCounts: Record<number, number> = {}
+  selectedIndexes.forEach(idx => {
+    indexCounts[idx] = (indexCounts[idx] || 0) + 1
+  })
+  const isExtremePattern = Object.values(indexCounts).some(count => count >= 5)
+
+  if (isMythicChance || isExtremePattern) {
+    const mythics = ['chaos_ceo', 'accidental_genius']
+    const selectedMythicId = mythics[Math.floor(Math.random() * mythics.length)]
+    const archetype = { ...ARCHETYPES[selectedMythicId] }
+    
+    // Generate custom judgements even for mythics
+    archetype.judgements = generateJudgement(tags)
+    return archetype
+  }
 
   // Find the archetype with the highest score
   let maxScore = -1
-  let maxId = 'chaos_coder'
+  let maxId = 'functional_zombie'
 
-  // Deterministic search
   const order = Object.keys(scores)
   order.forEach(id => {
     if (scores[id] > maxScore) {
@@ -172,5 +218,8 @@ export function calculateResult(answers: Record<number, number>): Archetype {
     }
   })
 
-  return ARCHETYPES[maxId]
+  const finalArchetype = { ...ARCHETYPES[maxId] }
+  finalArchetype.judgements = generateJudgement(tags)
+
+  return finalArchetype
 }

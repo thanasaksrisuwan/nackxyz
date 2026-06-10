@@ -79,14 +79,13 @@ app.post('/api/results', async (c) => {
     }
 
     const validArchetypes = [
-      'chaos_coder',
-      'tenx_architect',
-      'overflow_paster',
-      'clean_coder',
-      'grindset_leet',
-      'prompt_engineer',
-      'terminal_ninja',
-      'pixel_perfectionist'
+      'deadline_necromancer',
+      'emotional_support',
+      'dopamine_investor',
+      'productivity_tourist',
+      'functional_zombie',
+      'chaos_ceo',
+      'accidental_genius'
     ]
 
     if (!validArchetypes.includes(archetypeId)) {
@@ -149,14 +148,13 @@ app.get('/api/stats', async (c) => {
     
     // Seed default counts with 0
     const defaultArchetypes = [
-      'chaos_coder',
-      'tenx_architect',
-      'overflow_paster',
-      'clean_coder',
-      'grindset_leet',
-      'prompt_engineer',
-      'terminal_ninja',
-      'pixel_perfectionist'
+      'deadline_necromancer',
+      'emotional_support',
+      'dopamine_investor',
+      'productivity_tourist',
+      'functional_zombie',
+      'chaos_ceo',
+      'accidental_genius'
     ]
     defaultArchetypes.forEach(id => {
       stats[id] = 0

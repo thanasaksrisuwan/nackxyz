@@ -11,8 +11,21 @@ import { Sparkles, Terminal, Cpu, Zap, Code, Shield } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://p5oewgfhsi.execute-api.ap-southeast-1.amazonaws.com'
 
+const landingVersions = [
+  { title: "เรารู้ข้ออ้างที่คุณใช้หลอกตัวเอง", subtitle: "แบบทดสอบแฉกลยุทธ์พังๆ ที่คุณใช้หลอกตัวเองทุกวัน 💻" },
+  { title: "เราจะเดาได้ว่าคุณจัดการชีวิตพังๆ แบบไหน", subtitle: "แฉสันดานดิบในการเอาชีวิตรอดผ่านควิซ 8 ข้อ 💻" },
+  { title: "เพื่อนคุณน่าจะตอบควิซนี้แทนคุณได้แม่นกว่า", subtitle: "จริงไหมที่คนรอบตัวรู้จักข้ออ้างหลอกตัวเองของคุณดีกว่าตัวคุณเอง? กดท้าพิสูจน์! 💻" }
+]
+
 export default function Home() {
   const [gameState, setGameState] = useState<'hero' | 'quiz' | 'calculating' | 'result'>('hero')
+  const [heroContent, setHeroContent] = useState(landingVersions[0])
+
+  useEffect(() => {
+    const randomVersion = landingVersions[Math.floor(Math.random() * landingVersions.length)]
+    setHeroContent(randomVersion)
+  }, [])
+
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [result, setResult] = useState<Archetype | null>(null)
@@ -94,14 +107,13 @@ export default function Home() {
       // If no API config, generate a deterministic fallback based on ID
       if (!API_BASE_URL) {
         const fallbacks: Record<string, { count: number; total: number }> = {
-          chaos_coder: { count: 85, total: 600 },
-          tenx_architect: { count: 42, total: 600 },
-          overflow_paster: { count: 120, total: 600 },
-          clean_coder: { count: 54, total: 600 },
-          grindset_leet: { count: 32, total: 600 },
-          prompt_engineer: { count: 145, total: 600 },
-          terminal_ninja: { count: 48, total: 600 },
-          pixel_perfectionist: { count: 74, total: 600 }
+          deadline_necromancer: { count: 85, total: 600 },
+          emotional_support: { count: 120, total: 600 },
+          dopamine_investor: { count: 145, total: 600 },
+          productivity_tourist: { count: 74, total: 600 },
+          functional_zombie: { count: 110, total: 600 },
+          chaos_ceo: { count: 25, total: 600 },
+          accidental_genius: { count: 30, total: 600 }
         }
         const set = fallbacks[archetypeId] || { count: 75, total: 600 }
         currentArchetypeCount = set.count
@@ -158,15 +170,12 @@ export default function Home() {
                 </span>
               </div>
 
-              <div>
-                <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
-                  What's Your<br/>
-                  <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-                    Coding Vibe?
-                  </span> 💻
+              <div className="flex flex-col gap-4">
+                <h1 className="text-3xl font-extrabold tracking-tight text-white leading-tight min-h-[72px] flex items-center justify-center">
+                  {heroContent.title}
                 </h1>
-                <p className="text-zinc-400 text-sm leading-relaxed mt-4 max-w-[320px] mx-auto">
-                  Find out which developer archetype you belong to, get roasted by the compiler, and check your real-time rarity percentage.
+                <p className="text-zinc-400 text-sm leading-relaxed max-w-[320px] mx-auto min-h-[40px]">
+                  {heroContent.subtitle}
                 </p>
               </div>
 
