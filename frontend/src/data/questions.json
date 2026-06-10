@@ -1,0 +1,178 @@
+[
+  {
+    "id": 1,
+    "text": "How do you start a new project?",
+    "options": [
+      {
+        "text": "Write a 10-page system architecture doc, set up a monorepo, Docker, CI/CD, and K8s blueprints.",
+        "scores": { "tenx_architect": 3, "clean_coder": 1 }
+      },
+      {
+        "text": "Run create-app, delete all boilerplate, and immediately start hacking business logic.",
+        "scores": { "chaos_coder": 3, "overflow_paster": 1 }
+      },
+      {
+        "text": "Open ChatGPT/Claude and type 'build me a full web application for...' and copy paste.",
+        "scores": { "prompt_engineer": 3 }
+      },
+      {
+        "text": "Fire up Neovim, initialize a bare git repo, customize the Makefile, and write raw C/Rust.",
+        "scores": { "terminal_ninja": 3 }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "text": "Your code doesn't work. What is your first move?",
+    "options": [
+      {
+        "text": "Copy the error, paste it straight into Google/StackOverflow, and copy the first accepted answer.",
+        "scores": { "overflow_paster": 3 }
+      },
+      {
+        "text": "Launch a debugger, trace the call stack, inspect memory allocation, and verify the complexity.",
+        "scores": { "grindset_leet": 3, "clean_coder": 1 }
+      },
+      {
+        "text": "Ask Claude: 'Why is this failing? Fix it.' and replace the entire file.",
+        "scores": { "prompt_engineer": 3 }
+      },
+      {
+        "text": "Sprinkle console.log('HERE!!!'), console.log(123), and console.log(data) everywhere.",
+        "scores": { "chaos_coder": 3 }
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "text": "What is your stance on writing tests?",
+    "options": [
+      {
+        "text": "100% test coverage is the bare minimum. Unit, integration, E2E, and property-based tests are mandatory.",
+        "scores": { "clean_coder": 3, "tenx_architect": 1 }
+      },
+      {
+        "text": "Production is my testing environment. If it compiles (or runs), it ships. Users will tell us.",
+        "scores": { "chaos_coder": 3 }
+      },
+      {
+        "text": "I tell AI to write my tests, then I disable the failing ones in the CI config.",
+        "scores": { "prompt_engineer": 2, "overflow_paster": 1 }
+      },
+      {
+        "text": "I write optimal assertions to verify that my algorithm achieves O(N log N) space-time complexity.",
+        "scores": { "grindset_leet": 3 }
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "text": "A designer gives you a mockup. The button is 3px off-alignment. Your action?",
+    "options": [
+      {
+        "text": "Spend 4 hours writing custom CSS animations, adjusting sub-pixels, and fixing HSL color gradients.",
+        "scores": { "pixel_perfectionist": 3 }
+      },
+      {
+        "text": "A button is a button. Use default HTML <button>, alignment is a construct of the mind.",
+        "scores": { "chaos_coder": 2, "overflow_paster": 1 }
+      },
+      {
+        "text": "Ask AI to generate a 'perfect tailwind glassmorphic button with hover micro-animations'.",
+        "scores": { "prompt_engineer": 2, "pixel_perfectionist": 1 }
+      },
+      {
+        "text": "I don't do frontend. Command line interfaces don't have buttons.",
+        "scores": { "terminal_ninja": 3, "grindset_leet": 1 }
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "text": "It is 11 PM on a Friday. What are you coding?",
+    "options": [
+      {
+        "text": "Solving LeetCode Hard problems in C++ to optimize my neural network paths.",
+        "scores": { "grindset_leet": 3 }
+      },
+      {
+        "text": "Fixing a catastrophic bug in production that I introduced at 4:30 PM.",
+        "scores": { "chaos_coder": 3 }
+      },
+      {
+        "text": "Re-configuring my Neovim Lua scripts or customizing my keyboard's firmware.",
+        "scores": { "terminal_ninja": 3 }
+      },
+      {
+        "text": "Automating a 5-minute task that took me 6 hours to write an AI script for.",
+        "scores": { "prompt_engineer": 3 }
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "text": "What is your absolute favorite development tool?",
+    "options": [
+      {
+        "text": "Neovim running in a GPU-accelerated terminal, fully navigated via keyboard shortcuts.",
+        "scores": { "terminal_ninja": 3 }
+      },
+      {
+        "text": "Claude / Cursor / GitHub Copilot API.",
+        "scores": { "prompt_engineer": 3 }
+      },
+      {
+        "text": "Chrome DevTools inspector, Figma, and color contrast checkers.",
+        "scores": { "pixel_perfectionist": 3 }
+      },
+      {
+        "text": "Whiteboard diagramming software, database schemas, and UML generators.",
+        "scores": { "tenx_architect": 3 }
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "text": "How do you name your variables?",
+    "options": [
+      {
+        "text": "a, b, temp, data2, array_final_v3_really_done.",
+        "scores": { "chaos_coder": 3 }
+      },
+      {
+        "text": "AbstractFactoryProviderDelegateContextInstanceInitializer.",
+        "scores": { "tenx_architect": 3 }
+      },
+      {
+        "text": "Descriptive, self-documenting camelCase following strict Clean Code standards.",
+        "scores": { "clean_coder": 3 }
+      },
+      {
+        "text": "Whatever the StackOverflow snippet named them, or whatever AI auto-completed.",
+        "scores": { "overflow_paster": 2, "prompt_engineer": 1 }
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "text": "How do you feel about team planning meetings?",
+    "options": [
+      {
+        "text": "A massive waste of CPU cycles. I could be optimizing memory buffers or sorting lists.",
+        "scores": { "grindset_leet": 3 }
+      },
+      {
+        "text": "A perfect opportunity to propose migrating our entire system to a Rust-based WASM serverless stack.",
+        "scores": { "tenx_architect": 3 }
+      },
+      {
+        "text": "Excellent time to keep coding silently with my camera off.",
+        "scores": { "terminal_ninja": 2, "chaos_coder": 1 }
+      },
+      {
+        "text": "Good! I can showcase my new UI prototypes and custom micro-interactions.",
+        "scores": { "pixel_perfectionist": 3 }
+      }
+    ]
+  }
+]

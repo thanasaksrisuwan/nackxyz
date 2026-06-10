@@ -1,0 +1,48 @@
+service: dev-persona-backend
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-southeast-1
+  architecture: arm64
+  environment:
+    DYNAMODB_TABLE: dev-persona-stats
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource:
+            - Fn::GetAtt: [ StatsTable, Arn ]
+
+plugins:
+  - serverless-esbuild
+
+functions:
+  api:
+    handler: src/index.handler
+    events:
+      - httpApi: '*'
+    url:
+      cors: true
+
+resources:
+  Resources:
+    StatsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: dev-persona-stats
+        AttributeDefinitions:
+          - AttributeName: archetypeId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: archetypeId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 25
+          WriteCapacityUnits: 25
