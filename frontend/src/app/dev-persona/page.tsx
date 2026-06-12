@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import questionsData from '../../data/questions.json'
-import { calculateResult, ARCHETYPES, Archetype, ROAST_MESSAGES } from '../../data/engine'
+import { calculateResult, Archetype, ROAST_MESSAGES } from '../../data/engine'
 import ProgressBar from '../../components/ProgressBar'
 import QuestionCard from '../../components/QuestionCard'
 import ResultCard from '../../components/ResultCard'
-import { Sparkles, Terminal, Cpu, Zap, Code, Shield } from 'lucide-react'
+import { Sparkles, Terminal, Zap, Code } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://p5oewgfhsi.execute-api.ap-southeast-1.amazonaws.com'
 
@@ -39,7 +39,7 @@ export default function Home() {
 
   // Rotate roast messages during calculation
   useEffect(() => {
-    let interval: any
+    let interval: ReturnType<typeof setInterval> | undefined
     if (gameState === 'calculating') {
       interval = setInterval(() => {
         setRoastIdx(prev => (prev + 1) % ROAST_MESSAGES.length)
@@ -231,7 +231,7 @@ export default function Home() {
                     transition={{ duration: 0.25 }}
                     className="text-sm font-mono text-zinc-400 italic max-w-[280px] h-10"
                   >
-                    "{ROAST_MESSAGES[roastIdx]}"
+                    &ldquo;{ROAST_MESSAGES[roastIdx]}&rdquo;
                   </motion.p>
                 </AnimatePresence>
               </div>

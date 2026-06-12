@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { questions, calculateResult } from '../../soul-drink/data/questions';
 import type { Option, Axis } from '../../soul-drink/data/questions';
@@ -17,7 +18,8 @@ export default function SoulDrinkRoot() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scores, setScores] = useState<Scores>(initialScores);
-  const [resultData, setResultData] = useState<any>(null);
+  interface SoulDrinkResult { id: string; name: string; mbti: string; description: string; image: string; color: string; text: string }
+  const [resultData, setResultData] = useState<SoulDrinkResult | null>(null);
   const [rarity, setRarity] = useState<number | undefined>(undefined);
 
   const startGame = () => {
@@ -88,9 +90,11 @@ export default function SoulDrinkRoot() {
               className="glass-card max-w-sm w-full p-8 text-center flex flex-col items-center border-yellow-200/50"
             >
               <div className="relative mb-6 animate-float">
-                <img
+                <Image
                   src="/nanobanana_mascot.png"
                   alt="NanoBanana Mascot"
+                  width={192}
+                  height={192}
                   className="w-48 h-48 object-contain drop-shadow-xl"
                 />
               </div>

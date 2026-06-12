@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import html2canvas from 'html2canvas'
-import { ARCHETYPES, Archetype } from '../data/engine'
+import { Archetype } from '../data/engine'
 import { Download, RefreshCw, Share2, Award, Zap, Shield, Sparkles, Check } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
@@ -27,7 +27,7 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
       return Math.random() * (max - min) + min
     }
 
-    const interval: any = setInterval(function() {
+    const interval: ReturnType<typeof setInterval> = setInterval(function() {
       const timeLeft = animationEnd - Date.now()
 
       if (timeLeft <= 0) {

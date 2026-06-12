@@ -180,8 +180,9 @@ export function calculateResult(answers: Record<number, number>): Archetype {
     })
 
     // Accumulate tags if present
-    if ((option as any).tags) {
-      tags.push(...(option as any).tags)
+    const opt = option as { text: string; scores: Record<string, number | undefined>; tags?: string[] }
+    if (opt.tags) {
+      tags.push(...opt.tags)
     }
   })
 

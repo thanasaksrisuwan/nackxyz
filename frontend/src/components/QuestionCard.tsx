@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Code, Server, Terminal, Sparkles, AlertCircle } from 'lucide-react'
 
 interface Option {
   text: string

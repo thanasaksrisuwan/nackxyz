@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useRef, useState } from 'react';
 import { Download } from 'lucide-react';
+import Image from 'next/image';
 
 interface ResultCardProps {
   result: {
@@ -60,9 +61,11 @@ export default function ResultCard({ result, rarity }: ResultCardProps) {
         >
           {/* Top Section */}
           <div className="p-8 flex-1 flex flex-col items-center text-center justify-center relative z-10">
-            <img 
-              src={result.image} 
+            <Image
+              src={result.image}
               alt={result.name}
+              width={160}
+              height={160}
               className="w-40 h-40 object-contain mb-6 drop-shadow-lg rounded-2xl bg-white/20 p-2 border border-white/20"
             />
             <div className="bg-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-4">
