@@ -7,6 +7,9 @@ provider:
   architecture: arm64
   environment:
     DYNAMODB_TABLE: dev-persona-stats
+    SOUL_DRINK_TABLE: souldrink-stats
+    AUDIT_VERDICTS_TABLE: audit-verdicts
+    AUDIT_VERDICT_TTL_DAYS: '30'
   iam:
     role:
       statements:
@@ -19,6 +22,8 @@ provider:
             - dynamodb:UpdateItem
           Resource:
             - Fn::GetAtt: [ StatsTable, Arn ]
+            - Fn::GetAtt: [ SoulDrinkStatsTable, Arn ]
+            - Fn::GetAtt: [ AuditVerdictsTable, Arn ]
 
 plugins:
   - serverless-esbuild
@@ -44,4 +49,37 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 20
           WriteCapacityUnits: 20
+
+    SoulDrinkStatsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: souldrink-stats
+        AttributeDefinitions:
+          - AttributeName: result_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: result_id
+            KeyType: HASH
+        BillingMode: PROVISIONED
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    AuditVerdictsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: audit-verdicts
+        AttributeDefinitions:
+          - AttributeName: verdict_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: verdict_id
+            KeyType: HASH
+        BillingMode: PROVISIONED
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TimeToLiveSpecification:
+          AttributeName: ttl_expires_at
+          Enabled: true
 

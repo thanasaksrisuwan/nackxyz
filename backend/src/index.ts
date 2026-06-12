@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { handle } from 'hono/aws-lambda'
 import { cors } from 'hono/cors'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, UpdateCommand, ScanCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 
 const app = new Hono()
 
@@ -38,6 +38,9 @@ app.use('/*', cors({
 }))
 
 const tableName = process.env.DYNAMODB_TABLE || 'dev-persona-stats'
+const soulDrinkTable = process.env.SOUL_DRINK_TABLE || 'souldrink-stats'
+const auditTable = process.env.AUDIT_VERDICTS_TABLE || 'audit-verdicts'
+const AUDIT_VERDICT_TTL_DAYS = Number(process.env.AUDIT_VERDICT_TTL_DAYS || '30')
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-southeast-1' })
 const docClient = DynamoDBDocumentClient.from(client)
 
@@ -186,6 +189,124 @@ app.get('/api/stats', async (c) => {
     console.error('Error fetching stats:', error)
     return c.json({ error: 'Internal Server Error', message: error.message }, 500)
   }
+})
+
+// POST /api/stats - Increment count for a specific result_id (Soul Drink)
+app.post('/api/stats', async (c) => {
+  try {
+    const body = await c.req.json()
+    const resultId = body.result_id
+
+    if (!resultId) {
+      return c.json({ error: 'result_id is required' }, 400)
+    }
+
+    const command = new UpdateCommand({
+      TableName: soulDrinkTable,
+      Key: { result_id: resultId },
+      UpdateExpression: 'ADD #count :inc',
+      ExpressionAttributeNames: { '#count': 'count' },
+      ExpressionAttributeValues: { ':inc': 1 },
+      ReturnValues: 'UPDATED_NEW'
+    })
+
+    const response = await docClient.send(command)
+
+    return c.json({
+      success: true,
+      result_id: resultId,
+      new_count: response.Attributes?.count
+    })
+  } catch (error: any) {
+    console.error('Error updating Soul Drink stats:', error)
+    return c.json({ error: 'Failed to update stats' }, 500)
+  }
+})
+
+// GET /api/stats/:id - Fetch count for a specific result_id (Soul Drink)
+app.get('/api/stats/:id', async (c) => {
+  const resultId = c.req.param('id')
+
+  try {
+    const command = new GetCommand({
+      TableName: soulDrinkTable,
+      Key: { result_id: resultId }
+    })
+
+    const response = await docClient.send(command)
+
+    return c.json({
+      result_id: resultId,
+      count: response.Item?.count || 0
+    })
+  } catch (error: any) {
+    console.error('Error fetching Soul Drink stats:', error)
+    return c.json({ error: 'Failed to fetch stats' }, 500)
+  }
+})
+
+// POST /api/audit/verdict — save verdict to audit-verdicts with TTL
+app.post('/api/audit/verdict', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { verdictId, archetype, contradictionIndex, archetypeScores } = body
+
+    if (!verdictId || !archetype) {
+      return c.json({ error: 'verdictId and archetype are required' }, 400)
+    }
+
+    const now = new Date()
+    const ttlSeconds = Math.floor(now.getTime() / 1000) + AUDIT_VERDICT_TTL_DAYS * 24 * 60 * 60
+
+    await docClient.send(new PutCommand({
+      TableName: auditTable,
+      Item: {
+        verdict_id: verdictId,
+        archetype: archetype,
+        contradiction_index: contradictionIndex,
+        archetype_scores: archetypeScores,
+        is_secret: archetype === 'WALKING_CONTRADICTION',
+        created_at: now.toISOString(),
+        ttl_expires_at: ttlSeconds,
+      },
+    }))
+
+    return c.json({ success: true, verdictId })
+  } catch (error: any) {
+    console.error('Error saving audit verdict:', error)
+    return c.json({ error: 'Failed to save verdict' }, 500)
+  }
+})
+
+// GET /api/audit/verdict/:verdictId — fetch verdict by ID, 404 if not found
+app.get('/api/audit/verdict/:verdictId', async (c) => {
+  const verdictId = c.req.param('verdictId')
+  try {
+    const { Item } = await docClient.send(new GetCommand({
+      TableName: auditTable,
+      Key: { verdict_id: verdictId },
+    }))
+    if (!Item) return c.json({ error: 'Verdict not found' }, 404)
+    return c.json({
+      verdictId: Item.verdict_id,
+      archetype: Item.archetype,
+      isSecret: Item.is_secret,
+    })
+  } catch (error: any) {
+    console.error('Error fetching audit verdict:', error)
+    return c.json({ error: 'Failed to fetch verdict' }, 500)
+  }
+})
+
+// POST /api/audit/impression — fire-and-forget A/B impression logging
+app.post('/api/audit/impression', async (c) => {
+  try {
+    const body = await c.req.json()
+    console.log('AB impression:', JSON.stringify(body))
+  } catch {
+    // Best-effort; ignore parse errors
+  }
+  return c.json({ success: true })
 })
 
 export const handler = handle(app)

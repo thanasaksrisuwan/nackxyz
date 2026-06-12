@@ -1,267 +1,158 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import questionsData from '../data/questions.json'
-import { calculateResult, ARCHETYPES, Archetype, ROAST_MESSAGES } from '../data/engine'
-import ProgressBar from '../components/ProgressBar'
-import QuestionCard from '../components/QuestionCard'
-import ResultCard from '../components/ResultCard'
-import { Sparkles, Terminal, Cpu, Zap, Code, Shield } from 'lucide-react'
+import React from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { motion } from 'framer-motion'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://p5oewgfhsi.execute-api.ap-southeast-1.amazonaws.com'
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+}
 
-const landingVersions = [
-  { title: "เรารู้ข้ออ้างที่คุณใช้หลอกตัวเอง", subtitle: "แบบทดสอบแฉกลยุทธ์พังๆ ที่คุณใช้หลอกตัวเองทุกวัน 💻" },
-  { title: "เราจะเดาได้ว่าคุณจัดการชีวิตพังๆ แบบไหน", subtitle: "แฉสันดานดิบในการเอาชีวิตรอดผ่านควิซ 8 ข้อ 💻" },
-  { title: "เพื่อนคุณน่าจะตอบควิซนี้แทนคุณได้แม่นกว่า", subtitle: "จริงไหมที่คนรอบตัวรู้จักข้ออ้างหลอกตัวเองของคุณดีกว่าตัวคุณเอง? กดท้าพิสูจน์! 💻" }
-]
+const cardVariants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: 'easeOut' },
+  },
+}
 
-export default function Home() {
-  const [gameState, setGameState] = useState<'hero' | 'quiz' | 'calculating' | 'result'>('hero')
-  const [heroContent, setHeroContent] = useState(landingVersions[0])
-
-  useEffect(() => {
-    const randomVersion = landingVersions[Math.floor(Math.random() * landingVersions.length)]
-    setHeroContent(randomVersion)
-  }, [])
-
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [result, setResult] = useState<Archetype | null>(null)
-  
-  // Stats loaded from API
-  const [rarityPercent, setRarityPercent] = useState<number>(12.5)
-  const [totalPlays, setTotalPlays] = useState<number>(1000)
-  
-  // Roast message animation index
-  const [roastIdx, setRoastIdx] = useState(0)
-
-  // Rotate roast messages during calculation
-  useEffect(() => {
-    let interval: any
-    if (gameState === 'calculating') {
-      interval = setInterval(() => {
-        setRoastIdx(prev => (prev + 1) % ROAST_MESSAGES.length)
-      }, 700)
-    }
-    return () => clearInterval(interval)
-  }, [gameState])
-
-  const handleStartQuiz = () => {
-    setAnswers({})
-    setCurrentQuestionIdx(0)
-    setGameState('quiz')
-  }
-
-  const handleAnswerSelect = (optionIdx: number) => {
-    const questionId = questionsData[currentQuestionIdx].id
-    const updatedAnswers = { ...answers, [questionId]: optionIdx }
-    setAnswers(updatedAnswers)
-
-    if (currentQuestionIdx < questionsData.length - 1) {
-      setCurrentQuestionIdx(currentQuestionIdx + 1)
-    } else {
-      // Last question answered -> Start calculation
-      setGameState('calculating')
-      const calculatedResult = calculateResult(updatedAnswers)
-      setResult(calculatedResult)
-      
-      // Submit results & fetch stats in background
-      submitAndFetchStats(calculatedResult.id)
-    }
-  }
-
-  const submitAndFetchStats = async (archetypeId: string) => {
-    try {
-      // 1. Submit the user's archetype to register the count
-      let currentArchetypeCount = 1
-      let totalCount = 1000
-
-      if (API_BASE_URL) {
-        try {
-          const submitRes = await fetch(`${API_BASE_URL}/api/results`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ archetypeId })
-          })
-          if (submitRes.ok) {
-            const data = await submitRes.json()
-            currentArchetypeCount = data.updatedCount || 1
-          }
-
-          // 2. Fetch global statistics
-          const statsRes = await fetch(`${API_BASE_URL}/api/stats`)
-          if (statsRes.ok) {
-            const data = await statsRes.json()
-            totalCount = data.totalPlays || 1000
-            const stats = data.stats || {}
-            currentArchetypeCount = stats[archetypeId] || currentArchetypeCount
-          }
-        } catch (apiErr) {
-          console.warn('API error, using mock calculations:', apiErr)
-        }
-      }
-
-      // Calculate real-time percentage
-      // If no API config, generate a deterministic fallback based on ID
-      if (!API_BASE_URL) {
-        const fallbacks: Record<string, { count: number; total: number }> = {
-          deadline_necromancer: { count: 85, total: 600 },
-          emotional_support: { count: 120, total: 600 },
-          dopamine_investor: { count: 145, total: 600 },
-          productivity_tourist: { count: 74, total: 600 },
-          functional_zombie: { count: 110, total: 600 },
-          chaos_ceo: { count: 25, total: 600 },
-          accidental_genius: { count: 30, total: 600 }
-        }
-        const set = fallbacks[archetypeId] || { count: 75, total: 600 }
-        currentArchetypeCount = set.count
-        totalCount = set.total
-      }
-
-      const calculatedPercent = Number(((currentArchetypeCount / totalCount) * 100).toFixed(1))
-      setRarityPercent(calculatedPercent)
-      setTotalPlays(totalCount)
-    } catch (e) {
-      console.error('Error calculating statistics:', e)
-    } finally {
-      // Ensure the calculation loader shows for at least 2.5 seconds to build suspense
-      setTimeout(() => {
-        setGameState('result')
-      }, 2500)
-    }
-  }
-
+export default function HubPage() {
   return (
-    <main className="mobile-container flex flex-col justify-between items-center py-8 relative overflow-hidden bg-[#09090b]">
-      {/* GLOW BACKGROUND BLURS */}
-      <div className="absolute top-10 left-10 w-44 h-44 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-44 h-44 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+    <main
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden"
+      style={{ backgroundColor: 'var(--audit-bg, #09090b)' }}
+    >
+      {/* Background glow blobs */}
+      <div className="absolute top-10 left-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-10 w-48 h-48 bg-yellow-500/8 rounded-full blur-3xl pointer-events-none" />
 
-      {/* HEADER LOGO */}
-      <header className="w-full flex items-center justify-center gap-2 mb-4 z-10 shrink-0">
-        <Terminal className="w-5 h-5 text-purple-400" />
-        <span className="text-xs font-black tracking-[0.25em] text-zinc-300 font-mono">DEV PERSONA VIBE</span>
+      {/* Header */}
+      <header className="mb-12 text-center z-10">
+        <p className="text-xs font-black tracking-[0.3em] text-zinc-500 font-mono uppercase mb-3">
+          NanoBanana Lab
+        </p>
+        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          เลือกเกมที่ใช่
+        </h1>
+        <p className="text-zinc-400 text-sm mt-3 max-w-xs mx-auto">
+          สามเกม สามบุคลิก เล่นเพื่อค้นหาตัวตนของคุณ
+        </p>
       </header>
 
-      {/* STATE MACHINE CONTAINER */}
-      <div className="w-full flex-grow flex items-center justify-center z-10 py-4">
-        <AnimatePresence mode="wait">
-          {/* HERO SCREEN */}
-          {gameState === 'hero' && (
-            <motion.div
-              key="hero"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              className="w-full px-6 flex flex-col items-center text-center gap-7"
+      {/* Cards */}
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl z-10"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Card 1 — Dev Persona */}
+        <motion.div
+          variants={cardVariants}
+          className="glass-premium rounded-3xl p-7 flex flex-col gap-5 neon-glow-purple"
+        >
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-purple-400 uppercase">
+              Game 01
+            </span>
+            <h2 className="text-2xl font-extrabold text-white leading-snug">
+              Dev Persona Vibe
+            </h2>
+            <p className="text-zinc-400 text-sm leading-relaxed">
+              แบบทดสอบแฉกลยุทธ์พังๆ ที่คุณใช้หลอกตัวเองทุกวัน
+              ค้นหาบุคลิก dev ของคุณใน 8 คำถาม 💻
+            </p>
+          </div>
+          <div className="mt-auto">
+            <Link
+              href="/dev-persona"
+              className="inline-flex items-center justify-center w-full h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:brightness-110 transition-all"
             >
-              {/* Floating badges */}
-              <div className="flex flex-wrap gap-2.5 justify-center max-w-[320px]">
-                <span className="glass px-3 py-1 rounded-full text-xs font-bold text-cyan-400 border border-cyan-500/20 flex items-center gap-1 select-none">
-                  <Code className="w-3.5 h-3.5" /> next.js
-                </span>
-                <span className="glass px-3 py-1 rounded-full text-xs font-bold text-amber-400 border border-amber-500/20 flex items-center gap-1 select-none">
-                  <Zap className="w-3.5 h-3.5" /> serverless
-                </span>
-                <span className="glass px-3 py-1 rounded-full text-xs font-bold text-purple-400 border border-purple-500/20 flex items-center gap-1 select-none">
-                  <Sparkles className="w-3.5 h-3.5" /> O(1) optimization
-                </span>
-              </div>
+              เริ่มทำแบบทดสอบ →
+            </Link>
+          </div>
+        </motion.div>
 
-              <div className="flex flex-col gap-4">
-                <h1 className="text-3xl font-extrabold tracking-tight text-white leading-tight min-h-[72px] flex items-center justify-center">
-                  {heroContent.title}
-                </h1>
-                <p className="text-zinc-400 text-sm leading-relaxed max-w-[320px] mx-auto min-h-[40px]">
-                  {heroContent.subtitle}
-                </p>
-              </div>
+        {/* Card 2 — Soul Drink */}
+        <motion.div
+          variants={cardVariants}
+          className="glass-premium rounded-3xl p-7 flex flex-col gap-5 neon-glow-cyan"
+        >
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-yellow-400 uppercase">
+              Game 02
+            </span>
+            <h2 className="text-2xl font-extrabold text-white leading-snug">
+              Soul Drink
+            </h2>
+          </div>
 
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleStartQuiz}
-                className="w-full max-w-[280px] h-13 rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold text-[15px] shadow-lg shadow-purple-500/20 hover:brightness-110 transition-all outline-none"
-              >
-                Find Your Vibe
-              </motion.button>
-            </motion.div>
-          )}
+          <div className="flex justify-center">
+            <Image
+              src="/nanobanana_mascot.png"
+              alt="NanoBanana Mascot"
+              width={120}
+              height={120}
+              className="animate-float drop-shadow-lg"
+            />
+          </div>
 
-          {/* QUIZ SCREEN */}
-          {gameState === 'quiz' && (
-            <div className="w-full flex flex-col gap-6">
-              <ProgressBar current={currentQuestionIdx + 1} total={questionsData.length} />
-              <AnimatePresence mode="wait">
-                <QuestionCard
-                  key={currentQuestionIdx}
-                  question={questionsData[currentQuestionIdx]}
-                  questionNumber={currentQuestionIdx + 1}
-                  onSelect={handleAnswerSelect}
-                />
-              </AnimatePresence>
-            </div>
-          )}
+          <p className="text-zinc-400 text-sm leading-relaxed">
+            เครื่องดื่มบอกวิญญาณ ตอบคำถามแล้วค้นพบว่าคุณเป็น
+            กาแฟ ชา หรือน้ำผลไม้ 🍌
+          </p>
 
-          {/* CALCULATING SCREEN */}
-          {gameState === 'calculating' && (
-            <motion.div
-              key="calculating"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full px-6 flex flex-col items-center justify-center text-center gap-6"
+          <div className="mt-auto">
+            <Link
+              href="/soul-drink"
+              className="banana-btn w-full text-sm"
             >
-              {/* Spinning Loader */}
-              <div className="relative w-16 h-16">
-                <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
-                <div className="absolute inset-0 rounded-full border-4 border-t-purple-400 border-r-cyan-400 animate-spin" />
-              </div>
+              ค้นหาเครื่องดื่มของคุณ →
+            </Link>
+          </div>
+        </motion.div>
 
-              <div className="flex flex-col gap-2.5">
-                <h3 className="text-lg font-bold text-white tracking-wide">Compiling results...</h3>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={roastIdx}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.25 }}
-                    className="text-sm font-mono text-zinc-400 italic max-w-[280px] h-10"
-                  >
-                    "{ROAST_MESSAGES[roastIdx]}"
-                  </motion.p>
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
-
-          {/* RESULT SCREEN */}
-          {gameState === 'result' && result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full"
+        {/* Card 3 — Audit */}
+        <motion.div
+          variants={cardVariants}
+          className="glass-premium rounded-3xl p-7 flex flex-col gap-5 sm:col-span-2 lg:col-span-1"
+          style={{ boxShadow: '0 0 40px -5px rgba(255, 77, 77, 0.3)' }}
+        >
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-red-400 uppercase">
+              Game 03
+            </span>
+            <h2 className="text-2xl font-extrabold text-white leading-snug">
+              The Audit
+            </h2>
+            <p className="text-zinc-400 text-sm leading-relaxed">
+              พิจารณาหลักฐาน ตัดสินความผิด และพิสูจน์ว่าคุณ
+              อ่านคนออกหรือโดนหลอกง่าย ⚖️
+            </p>
+          </div>
+          <div className="mt-auto">
+            <Link
+              href="/audit"
+              className="inline-flex items-center justify-center w-full h-12 rounded-2xl border border-red-500/40 text-red-300 font-bold text-sm hover:bg-red-500/10 hover:border-red-400/60 transition-all"
             >
-              <ResultCard
-                archetype={result}
-                rarityPercent={rarityPercent}
-                totalPlays={totalPlays}
-                onRestart={handleStartQuiz}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              เข้าสู่ห้องพิจารณา →
+            </Link>
+          </div>
+        </motion.div>
+      </motion.div>
 
-      {/* FOOTER */}
-      <footer className="w-full flex flex-col items-center gap-1.5 shrink-0 z-10">
-        <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">
-          MADE FOR DEVELOPERS WITH ❤️
+      {/* Footer */}
+      <footer className="mt-16 z-10">
+        <p className="text-[10px] text-zinc-600 font-mono tracking-widest uppercase">
+          MADE WITH ❤️ BY NANOBANANA LAB
         </p>
       </footer>
     </main>
