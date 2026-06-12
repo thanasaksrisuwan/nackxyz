@@ -17,7 +17,7 @@ export default function AuditLandingPage({ onStart }: AuditLandingPageProps) {
     setVariant(v);
 
     // Fire-and-forget impression event
-    fetch('/api/audit/impression', {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/impression`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ variant: v, timestamp: new Date().toISOString() }),
