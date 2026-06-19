@@ -9,7 +9,7 @@ import QuestionCard from '../../components/QuestionCard'
 import ResultCard from '../../components/ResultCard'
 import { Sparkles, Terminal, Zap, Code } from 'lucide-react'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://p5oewgfhsi.execute-api.ap-southeast-1.amazonaws.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 const landingVersions = [
   { title: "เรารู้ข้ออ้างที่คุณใช้หลอกตัวเอง", subtitle: "แบบทดสอบแฉกลยุทธ์พังๆ ที่คุณใช้หลอกตัวเองทุกวัน 💻" },
