@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import questionsData from '../../data/questions.json'
 import { calculateResult, Archetype, ROAST_MESSAGES } from '../../data/engine'
 import ProgressBar from '../../components/ProgressBar'
@@ -19,12 +19,7 @@ const landingVersions = [
 
 export default function Home() {
   const [gameState, setGameState] = useState<'hero' | 'quiz' | 'calculating' | 'result'>('hero')
-  const [heroContent, setHeroContent] = useState(landingVersions[0])
-
-  useEffect(() => {
-    const randomVersion = landingVersions[Math.floor(Math.random() * landingVersions.length)]
-    setHeroContent(randomVersion)
-  }, [])
+  const [heroContent] = useState(() => landingVersions[Math.floor(Math.random() * landingVersions.length)])
 
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
@@ -150,7 +145,7 @@ export default function Home() {
         <AnimatePresence mode="wait">
           {/* HERO SCREEN */}
           {gameState === 'hero' && (
-            <motion.div
+            <m.div
               key="hero"
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -179,15 +174,15 @@ export default function Home() {
                 </p>
               </div>
 
-              <motion.button
+              <m.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={handleStartQuiz}
                 className="w-full max-w-[280px] h-13 rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold text-[15px] shadow-lg shadow-purple-500/20 hover:brightness-110 transition-all outline-none"
               >
                 Find Your Vibe
-              </motion.button>
-            </motion.div>
+              </m.button>
+            </m.div>
           )}
 
           {/* QUIZ SCREEN */}
@@ -195,19 +190,31 @@ export default function Home() {
             <div className="w-full flex flex-col gap-6">
               <ProgressBar current={currentQuestionIdx + 1} total={questionsData.length} />
               <AnimatePresence mode="wait">
-                <QuestionCard
-                  key={currentQuestionIdx}
-                  question={questionsData[currentQuestionIdx]}
-                  questionNumber={currentQuestionIdx + 1}
-                  onSelect={handleAnswerSelect}
-                />
+                {(() => {
+                  const question = questionsData[currentQuestionIdx];
+                  if (!question) {
+                    return (
+                      <div key="loading-question" className="text-center py-12 text-zinc-400 font-semibold bg-zinc-900/30 backdrop-blur rounded-3xl p-8 border border-zinc-800/30 w-full">
+                        ...กำลังโหลดคำถาม...
+                      </div>
+                    );
+                  }
+                  return (
+                    <QuestionCard
+                      key={currentQuestionIdx}
+                      question={question}
+                      questionNumber={currentQuestionIdx + 1}
+                      onSelect={handleAnswerSelect}
+                    />
+                  );
+                })()}
               </AnimatePresence>
             </div>
           )}
 
           {/* CALCULATING SCREEN */}
           {gameState === 'calculating' && (
-            <motion.div
+            <m.div
               key="calculating"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -223,7 +230,7 @@ export default function Home() {
               <div className="flex flex-col gap-2.5">
                 <h3 className="text-lg font-bold text-white tracking-wide">Compiling results...</h3>
                 <AnimatePresence mode="wait">
-                  <motion.p
+                  <m.p
                     key={roastIdx}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -232,15 +239,15 @@ export default function Home() {
                     className="text-sm font-mono text-zinc-400 italic max-w-[280px] h-10"
                   >
                     &ldquo;{ROAST_MESSAGES[roastIdx]}&rdquo;
-                  </motion.p>
+                  </m.p>
                 </AnimatePresence>
               </div>
-            </motion.div>
+            </m.div>
           )}
 
           {/* RESULT SCREEN */}
           {gameState === 'result' && result && (
-            <motion.div
+            <m.div
               key="result"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -253,7 +260,7 @@ export default function Home() {
                 totalPlays={totalPlays}
                 onRestart={handleStartQuiz}
               />
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

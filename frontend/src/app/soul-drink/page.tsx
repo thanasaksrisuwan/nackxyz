@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { questions, calculateResult } from '../../soul-drink/data/questions';
 import type { Option, Axis } from '../../soul-drink/data/questions';
 import QuestionCard from '../../soul-drink/components/QuestionCard';
@@ -29,14 +29,12 @@ export default function SoulDrinkRoot() {
   };
 
   const handleAnswer = (option: Option) => {
-    // 1. Accumulate Score
     const newScores = {
       ...scores,
       [option.axis]: scores[option.axis] + option.weight
     };
     setScores(newScores);
 
-    // 2. Advance to next or finish
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -49,7 +47,6 @@ export default function SoulDrinkRoot() {
     setResultData(res);
     setGameState('RESULT');
 
-    // Call backend API to record stat
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -61,73 +58,84 @@ export default function SoulDrinkRoot() {
 
       if (response.ok) {
         await response.json();
-        // Mock rarity between 5-15%
         setRarity(Math.floor(Math.random() * 10) + 5);
       }
     } catch (err) {
-      console.error("API Call failed (which is normal if backend isn't running yet):", err);
-      // Fallback rarity
+      console.error("API Call failed:", err);
       setRarity(12);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-100/50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-hidden relative" style={{ backgroundColor: 'var(--audit-bg, #09090b)' }}>
 
       {/* Decorative Blur Orbs */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-yellow-300/20 blur-[80px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-amber-300/20 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-yellow-500/5 blur-[80px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-500/5 blur-[100px] pointer-events-none z-0" />
 
       <main className="w-full relative z-10 flex flex-col items-center">
         <AnimatePresence mode="wait">
 
           {gameState === 'START' && (
-            <motion.div
+            <m.div
               key="start"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="glass-card max-w-sm w-full p-8 text-center flex flex-col items-center border-yellow-200/50"
+              className="bg-zinc-950/90 border border-zinc-800 rounded-2xl p-6 text-center flex flex-col items-center max-w-sm w-full relative z-10 shadow-xl shadow-black/40"
+              style={{ boxShadow: '0 4px 30px rgba(0, 0, 0, 0.4), 0 0 35px -5px rgba(234, 179, 8, 0.1)' }}
             >
               <div className="relative mb-6 animate-float">
                 <Image
-                  src="/nanobanana_mascot.png"
+                  src="/soul_drink_mascot.jpg"
                   alt="NanoBanana Mascot"
-                  width={192}
-                  height={192}
-                  className="w-48 h-48 object-contain drop-shadow-xl"
+                  width={144}
+                  height={144}
+                  className="w-36 h-36 object-cover rounded-2xl border border-zinc-800 shadow-md"
                 />
               </div>
-              <h1 className="text-3xl font-extrabold mb-1 tracking-tight text-amber-950 font-sans">Soul Drink</h1>
-              <h2 className="text-sm font-bold text-amber-600 mb-4 tracking-wider uppercase">by NanoBanana 🍌</h2>
-              <p className="text-gray-600 mb-8 font-medium text-sm leading-relaxed">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black tracking-widest bg-zinc-900 text-yellow-300 border border-yellow-900/60 uppercase mb-3">
+                GAME 02
+              </span>
+              <h1 className="text-2xl font-black text-white mb-2 leading-tight">Soul Drink</h1>
+              <p className="text-zinc-300 mb-6 font-medium text-sm leading-relaxed px-4">
                 เครื่องดื่มแก้วโปรดบอก Vibe ในตัวคุณ<br />
-                มาค้นหากันว่าตัวตนจริงๆ ของคุณคือเมนูกล้วยปั่นรสชาติไหน?
+                ค้นหากันว่าคุณคือเมนูน้ำรสชาติไหน? 🍌
               </p>
               <button
                 onClick={startGame}
-                className="banana-btn w-full text-lg animate-glow"
+                className="w-full h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center transition-all duration-300 bg-yellow-400 hover:bg-yellow-300 text-zinc-950 shadow-md shadow-yellow-500/10 hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 เริ่มค้นหาเลย ✨
               </button>
               <Link
                 href="/"
-                className="mt-4 text-sm text-amber-700/60 hover:text-amber-700 transition-colors"
+                className="mt-4 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors uppercase tracking-wider"
               >
                 ← กลับหน้าหลัก
               </Link>
-            </motion.div>
+            </m.div>
           )}
 
-          {gameState === 'PLAYING' && (
-            <QuestionCard
-              key={currentIndex}
-              question={questions[currentIndex]}
-              onAnswer={handleAnswer}
-              currentIndex={currentIndex}
-              totalQuestions={questions.length}
-            />
-          )}
+          {gameState === 'PLAYING' && (() => {
+            const question = questions[currentIndex];
+            if (!question) {
+              return (
+                <div key="loading-question" className="text-center py-12 text-zinc-400 font-semibold bg-zinc-950/80 border border-zinc-800 rounded-2xl p-8 max-w-md w-full mx-auto">
+                  ...กำลังจิบข้อมูล...
+                </div>
+              );
+            }
+            return (
+              <QuestionCard
+                key={currentIndex}
+                question={question}
+                onAnswer={handleAnswer}
+                currentIndex={currentIndex}
+                totalQuestions={questions.length}
+              />
+            );
+          })()}
 
           {gameState === 'RESULT' && resultData && (
             <ResultCard key="result" result={resultData} rarity={rarity} />

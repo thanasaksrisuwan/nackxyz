@@ -1,5 +1,4 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 
 interface ProgressBarProps {
   current: number
@@ -17,7 +16,7 @@ export default function ProgressBar({ current, total }: ProgressBarProps) {
       </div>
       
       <div className="w-full h-2 bg-zinc-800/80 rounded-full overflow-hidden border border-zinc-700/30 p-[1px]">
-        <motion.div
+        <m.div
           className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}

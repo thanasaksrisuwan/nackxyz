@@ -3,8 +3,11 @@ import { handle } from 'hono/aws-lambda'
 import { cors } from 'hono/cors'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand, ScanCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { z } from 'zod'
+import { randomUUID } from 'crypto'
+import { submitVerdictSchema, calculateVerdict } from './verdictCalculator'
 
-const app = new Hono()
+export const app = new Hono()
 
 // Define allowed CORS origins
 const ALLOWED_ORIGINS = [
@@ -43,16 +46,6 @@ const auditTable = process.env.AUDIT_VERDICTS_TABLE || 'audit-verdicts'
 const AUDIT_VERDICT_TTL_DAYS = Number(process.env.AUDIT_VERDICT_TTL_DAYS || '30')
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-southeast-1' })
 const docClient = DynamoDBDocumentClient.from(client)
-
-// In-Memory Cache for Statistics to prevent DynamoDB RCU exhaustion
-interface CachedStats {
-  totalPlays: number
-  stats: Record<string, number>
-  timestamp: number
-}
-
-let cache: CachedStats | null = null
-const CACHE_TTL_MS = 10000 // 10 seconds
 
 // Root endpoint for health check
 app.get('/', (c) => {
@@ -111,9 +104,6 @@ app.post('/api/results', async (c) => {
     })
 
     const response = await docClient.send(command)
-    
-    // Invalidate local in-memory cache so next read fetches fresh data
-    cache = null
 
     return c.json({
       success: true,
@@ -129,16 +119,6 @@ app.post('/api/results', async (c) => {
 // GET /api/stats - Get counts for all archetypes
 app.get('/api/stats', async (c) => {
   try {
-    const now = Date.now()
-    if (cache && (now - cache.timestamp < CACHE_TTL_MS)) {
-      return c.json({
-        success: true,
-        totalPlays: cache.totalPlays,
-        stats: cache.stats,
-        _cached: true
-      })
-    }
-
     const command = new ScanCommand({
       TableName: tableName
     })
@@ -172,13 +152,6 @@ app.get('/api/stats', async (c) => {
 
     // Calculate total plays
     const totalPlays = Object.values(stats).reduce((acc, curr) => acc + curr, 0)
-
-    // Save to in-memory cache
-    cache = {
-      totalPlays,
-      stats,
-      timestamp: now
-    }
 
     return c.json({
       success: true,
@@ -245,16 +218,20 @@ app.get('/api/stats/:id', async (c) => {
   }
 })
 
-// POST /api/audit/verdict — save verdict to audit-verdicts with TTL
+// POST /api/audit/verdict — validate evidence, calculate results, and save verdict
 app.post('/api/audit/verdict', async (c) => {
   try {
     const body = await c.req.json()
-    const { verdictId, archetype, contradictionIndex, archetypeScores } = body
-
-    if (!verdictId || !archetype) {
-      return c.json({ error: 'verdictId and archetype are required' }, 400)
+    const validation = submitVerdictSchema.safeParse(body)
+    if (!validation.success) {
+      return c.json({ error: 'Invalid input schema', details: validation.error.format() }, 400)
     }
 
+    const { evidenceLog } = validation.data
+    const verdictBase = calculateVerdict(evidenceLog)
+
+    // Save verdict to database
+    const verdictId = randomUUID()
     const now = new Date()
     const ttlSeconds = Math.floor(now.getTime() / 1000) + AUDIT_VERDICT_TTL_DAYS * 24 * 60 * 60
 
@@ -262,19 +239,26 @@ app.post('/api/audit/verdict', async (c) => {
       TableName: auditTable,
       Item: {
         verdict_id: verdictId,
-        archetype: archetype,
-        contradiction_index: contradictionIndex,
-        archetype_scores: archetypeScores,
-        is_secret: archetype === 'WALKING_CONTRADICTION',
+        archetype: verdictBase.archetype,
+        contradiction_index: verdictBase.contradictionIndex,
+        archetype_scores: verdictBase.archetypeScores,
+        is_secret: verdictBase.isSecret,
         created_at: now.toISOString(),
         ttl_expires_at: ttlSeconds,
       },
     }))
 
-    return c.json({ success: true, verdictId })
+    return c.json({
+      success: true,
+      verdictId,
+      archetype: verdictBase.archetype,
+      contradictionIndex: verdictBase.contradictionIndex,
+      archetypeScores: verdictBase.archetypeScores,
+      isSecret: verdictBase.isSecret
+    })
   } catch (error: any) {
     console.error('Error saving audit verdict:', error)
-    return c.json({ error: 'Failed to save verdict' }, 500)
+    return c.json({ error: 'Failed to save verdict', message: error.message }, 500)
   }
 })
 
@@ -307,6 +291,42 @@ app.post('/api/audit/impression', async (c) => {
     // Best-effort; ignore parse errors
   }
   return c.json({ success: true })
+})
+
+// Global Error Handler with Discord Alerting
+app.onError(async (err, c) => {
+  console.error('Unhandled Exception:', err)
+
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+  if (webhookUrl) {
+    try {
+      const payload = {
+        embeds: [{
+          title: '🚨 Backend Service Error (500)',
+          color: 16711680, // Hex: 0xff0000
+          fields: [
+            { name: 'Method', value: c.req.method, inline: true },
+            { name: 'URL', value: c.req.url, inline: true },
+            { name: 'Message', value: err.message || 'Unknown error' },
+            { name: 'Stack Trace', value: `\`\`\`javascript\n${(err.stack || '').slice(0, 800)}\n\`\`\`` }
+          ],
+          timestamp: new Date().toISOString()
+        }]
+      }
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(alertErr => {
+        console.error('Failed to dispatch Discord Alert:', alertErr)
+      })
+    } catch (constructErr) {
+      console.error('Failed to construct Discord alert payload:', constructErr)
+    }
+  }
+
+  return c.json({ error: 'Internal Server Error', message: err.message }, 500)
 })
 
 export const handler = handle(app)

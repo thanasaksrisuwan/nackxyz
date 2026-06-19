@@ -14,7 +14,11 @@ export default function AuditLandingPage({ onStart }: AuditLandingPageProps) {
 
   useEffect(() => {
     const v = getOrAssignVariant();
-    setVariant(v);
+    
+    // Defer state update to avoid synchronous cascading render during hydration mount
+    setTimeout(() => {
+      setVariant(v);
+    }, 0);
 
     // Fire-and-forget impression event
     fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/impression`, {

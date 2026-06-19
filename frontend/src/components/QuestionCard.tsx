@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 
 interface Option {
   text: string
@@ -36,8 +36,8 @@ export default function QuestionCard({ question, questionNumber, onSelect }: Que
   const optionLetters = ['A', 'B', 'C', 'D']
 
   return (
-    <motion.div
-      key={question.id}
+    <m.div
+      key={question?.id ?? questionNumber}
       initial={{ opacity: 0, y: 30, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -30, scale: 0.96 }}
@@ -54,18 +54,18 @@ export default function QuestionCard({ question, questionNumber, onSelect }: Que
         </span>
         
         <h2 className="text-xl font-bold tracking-tight text-white leading-snug">
-          {question.text}
+          {question?.text ?? "กำลังโหลดคำถาม..."}
         </h2>
       </div>
 
       {/* Options Stack */}
       <div className="flex flex-col gap-3.5">
-        {question.options.map((option, idx) => {
+        {question?.options?.map((option, idx) => {
           const isSelected = selectedIdx === idx
           const isAnySelected = selectedIdx !== null
           
           return (
-            <motion.button
+            <m.button
               key={idx}
               disabled={isAnySelected}
               onClick={() => handleOptionTap(idx)}
@@ -81,7 +81,7 @@ export default function QuestionCard({ question, questionNumber, onSelect }: Que
             >
               {/* Tactical background highlight pulse */}
               {isSelected && (
-                <motion.div
+                <m.div
                   className="absolute inset-0 bg-emerald-500/5"
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 2, opacity: 1 }}
@@ -106,10 +106,10 @@ export default function QuestionCard({ question, questionNumber, onSelect }: Que
               <span className="text-[15px] font-medium leading-relaxed">
                 {option.text}
               </span>
-            </motion.button>
+            </m.button>
           )
         })}
       </div>
-    </motion.div>
+    </m.div>
   )
 }

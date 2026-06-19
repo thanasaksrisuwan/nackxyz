@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import html2canvas from 'html2canvas'
 import { Archetype } from '../data/engine'
 import { Download, RefreshCw, Share2, Award, Zap, Shield, Sparkles, Check } from 'lucide-react'
@@ -213,7 +213,7 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
 
       {/* SHARE & ACTION CONTROLS */}
       <div className="w-full max-w-[380px] flex flex-col gap-3">
-        <motion.button
+        <m.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleDownloadImage}
@@ -231,10 +231,10 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
               <span>Save Card to Device</span>
             </>
           )}
-        </motion.button>
+        </m.button>
 
         <div className="grid grid-cols-2 gap-3">
-          <motion.button
+          <m.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleShare}
@@ -255,9 +255,9 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
                 <span>Copy Share Link</span>
               </>
             )}
-          </motion.button>
+          </m.button>
 
-          <motion.button
+          <m.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onRestart}
@@ -265,7 +265,7 @@ export default function ResultCard({ archetype, rarityPercent, totalPlays, onRes
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Retake Quiz</span>
-          </motion.button>
+          </m.button>
         </div>
       </div>
     </div>

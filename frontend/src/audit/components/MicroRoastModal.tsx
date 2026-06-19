@@ -4,7 +4,7 @@
 // Full-screen micro-roast overlay shown at case 3 and case 7 checkpoints.
 // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import type { EvidenceLog } from '../types';
 import { getLeadingArchetype } from '../verdictCalculator';
 import { microRoasts } from '../data/microRoasts';
@@ -36,7 +36,7 @@ export function MicroRoastModal({ evidenceLog, onConfirm }: MicroRoastModalProps
       }}
     >
       {/* Animated modal card */}
-      <motion.div
+      <m.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -97,7 +97,7 @@ export function MicroRoastModal({ evidenceLog, onConfirm }: MicroRoastModalProps
         >
           รับทราบ
         </button>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

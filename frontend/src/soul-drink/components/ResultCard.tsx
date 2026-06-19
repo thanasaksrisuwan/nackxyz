@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useRef, useState } from 'react';
 import { Download } from 'lucide-react';
@@ -48,7 +48,7 @@ export default function ResultCard({ result, rarity }: ResultCardProps) {
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', damping: 20 }}
@@ -103,26 +103,26 @@ export default function ResultCard({ result, rarity }: ResultCardProps) {
             </div>
           </div>
         </div>
-      </motion.div>
+      </m.div>
 
       {/* Action Buttons */}
       <div className="flex gap-4 px-4 pb-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
         <button 
           onClick={() => window.location.reload()}
-          className="apple-btn flex-1 bg-white/75 backdrop-blur-lg border border-yellow-200/50 text-amber-950 flex items-center justify-center gap-2 hover:bg-white cursor-pointer"
+          className="flex-1 h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center transition-all duration-200 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 cursor-pointer"
         >
           เริ่มใหม่
         </button>
         <button 
           onClick={handleSaveImage}
           disabled={isSaving}
-          className="apple-btn flex-[2] bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-950 shadow-md shadow-yellow-500/20 hover:shadow-yellow-500/40 flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
+          className="flex-[2] h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center transition-all duration-200 bg-yellow-400 hover:bg-yellow-300 text-zinc-950 shadow-md shadow-yellow-500/10 disabled:opacity-70 cursor-pointer"
         >
           {isSaving ? (
              <span className="animate-pulse">กำลังบันทึก...</span>
           ) : (
             <>
-              <Download size={20} />
+              <Download size={18} />
               บันทึกรูปภาพ
             </>
           )}

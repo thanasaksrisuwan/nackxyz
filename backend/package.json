@@ -5,17 +5,20 @@
     "build": "esbuild --bundle --outfile=./dist/index.js --platform=node --target=node20 ./src/index.ts",
     "zip": "zip -j lambda.zip dist/index.js",
     "update": "aws lambda update-function-code --zip-file fileb://lambda.zip --function-name hello",
-    "deploy": "run-s build zip update"
+    "deploy": "run-s build zip update",
+    "test": "vitest run"
   },
   "devDependencies": {
     "esbuild": "^0.21.4",
     "npm-run-all2": "^6.2.0",
     "serverless": "^3.39.0",
-    "serverless-esbuild": "^1.57.2"
+    "serverless-esbuild": "^1.57.2",
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1065.0",
     "@aws-sdk/lib-dynamodb": "^3.1065.0",
-    "hono": "^4.12.25"
+    "hono": "^4.12.25",
+    "zod": "^4.4.3"
   }
 }

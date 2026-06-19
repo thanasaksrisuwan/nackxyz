@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useReducer } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { auditReducer, initialAuditState } from './state';
-import { calculateVerdict } from './verdictCalculator';
-import { contradictionPairs } from './data/contradictionPairs';
 import { auditCases } from './data/auditCases';
 import type { GetVerdictResponse, VerdictResult } from './types';
 import AuditLandingPage from './components/AuditLandingPage';
@@ -23,8 +21,50 @@ interface AuditGameProps {
 }
 
 export default function AuditGame({ challengeVerdictId, defendantVerdict }: AuditGameProps) {
-  const [state, dispatch] = useReducer(auditReducer, initialAuditState);
+  const [state, dispatch] = useReducer(auditReducer, initialAuditState, (initial) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('nanobanana_audit_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.gameState && parsed.gameState !== 'VERDICT' && parsed.gameState !== 'ERROR') {
+            return {
+              ...initial,
+              ...parsed,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load saved state:', e);
+      }
+    }
+    return initial;
+  });
   const { gameState, evidenceLog, error, currentCaseIndex, verdictResult } = state;
+
+  // Save state to localStorage to prevent data loss on refresh
+  useEffect(() => {
+    if (gameState !== 'VERDICT' && gameState !== 'ERROR') {
+      try {
+        localStorage.setItem(
+          'nanobanana_audit_state',
+          JSON.stringify({
+            gameState,
+            currentCaseIndex,
+            evidenceLog,
+          })
+        );
+      } catch (e) {
+        console.warn('Failed to save state:', e);
+      }
+    } else {
+      try {
+        localStorage.removeItem('nanobanana_audit_state');
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [gameState, currentCaseIndex, evidenceLog]);
 
   // Trigger verdict calculation when entering CALCULATING state.
   // useEffect runs after render, so this is a lazy trigger — not on render itself.
@@ -34,30 +74,24 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
     let cancelled = false;
 
     async function runCalculation() {
-      const verdictBase = calculateVerdict(evidenceLog, contradictionPairs);
-      const verdictId = crypto.randomUUID();
-
-      const payload = {
-        verdictId,
-        archetype: verdictBase.archetype,
-        contradictionIndex: verdictBase.contradictionIndex,
-        archetypeScores: verdictBase.archetypeScores,
-      };
-
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/verdict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ evidenceLog }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
         if (cancelled) return;
 
         const verdictResult: VerdictResult = {
-          ...verdictBase,
-          verdictId,
+          verdictId: data.verdictId,
+          archetype: data.archetype,
+          contradictionIndex: data.contradictionIndex,
+          archetypeScores: data.archetypeScores,
+          isSecret: data.isSecret,
         };
 
         dispatch({ type: 'SET_VERDICT', verdict: verdictResult });
@@ -85,16 +119,16 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
     switch (gameState) {
       case 'LANDING':
         return (
-          <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <AuditLandingPage
               onStart={() => dispatch({ type: 'START_INVESTIGATION' })}
             />
-          </motion.div>
+          </m.div>
         );
 
       case 'INVESTIGATING':
         return (
-          <motion.div key="investigating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="investigating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <CasePlayer
               auditCase={auditCases[currentCaseIndex]}
               caseNumber={currentCaseIndex + 1}
@@ -102,47 +136,47 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
                 dispatch({ type: 'SUBMIT_EVIDENCE', caseIndex, archetype });
               }}
             />
-          </motion.div>
+          </m.div>
         );
 
       case 'MICRO_ROAST_3':
       case 'MICRO_ROAST_7':
         return (
-          <motion.div key={gameState} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key={gameState} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <MicroRoastModal
               evidenceLog={evidenceLog}
               onConfirm={() => dispatch({ type: 'CONFIRM_MICRO_ROAST' })}
             />
-          </motion.div>
+          </m.div>
         );
 
       case 'CALCULATING':
         return (
-          <motion.div key="calculating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="calculating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div data-testid="calculating-view">กำลังวิเคราะห์...</div>
-          </motion.div>
+          </m.div>
         );
 
       case 'VERDICT':
         return (
-          <motion.div key="verdict" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="verdict" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {verdictResult && (
               <VerdictPage
                 verdictResult={verdictResult}
                 defendantVerdict={challengeVerdictId ? defendantVerdict : undefined}
               />
             )}
-          </motion.div>
+          </m.div>
         );
 
       case 'ERROR':
         return (
-          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <m.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <ErrorView
               message={error ?? 'เกิดข้อผิดพลาด'}
               onRestart={() => dispatch({ type: 'RESTART' })}
             />
-          </motion.div>
+          </m.div>
         );
     }
   };

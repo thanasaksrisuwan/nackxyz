@@ -31,8 +31,7 @@ plugins:
 functions:
   api:
     handler: src/index.handler
-    events:
-      - httpApi: '*'
+    url: true
 
 resources:
   Resources:
@@ -46,9 +45,10 @@ resources:
         KeySchema:
           - AttributeName: archetypeId
             KeyType: HASH
+        BillingMode: PROVISIONED
         ProvisionedThroughput:
-          ReadCapacityUnits: 20
-          WriteCapacityUnits: 20
+          ReadCapacityUnits: 8
+          WriteCapacityUnits: 8
 
     SoulDrinkStatsTable:
       Type: AWS::DynamoDB::Table
@@ -62,8 +62,8 @@ resources:
             KeyType: HASH
         BillingMode: PROVISIONED
         ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+          ReadCapacityUnits: 8
+          WriteCapacityUnits: 8
 
     AuditVerdictsTable:
       Type: AWS::DynamoDB::Table
@@ -77,8 +77,8 @@ resources:
             KeyType: HASH
         BillingMode: PROVISIONED
         ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+          ReadCapacityUnits: 8
+          WriteCapacityUnits: 8
         TimeToLiveSpecification:
           AttributeName: ttl_expires_at
           Enabled: true
