@@ -31,7 +31,8 @@ plugins:
 functions:
   api:
     handler: src/index.handler
-    url: true
+    url:
+      cors: true
     events:
       - httpApi: '*'
 
