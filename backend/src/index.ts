@@ -13,6 +13,28 @@ export const app = new Hono()
 // Enable UUID request correlation mapping
 app.use('*', requestId())
 
+// Simple in-memory rate limiter for Lambda instances (mitigates concurrent container metric abuse)
+const rateLimiter = new Map<string, { count: number; resetTime: number }>()
+
+app.use('*', async (c, next) => {
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+  const now = Date.now()
+  const windowMs = 60 * 1000 // 1 minute
+  const limit = 60 // 60 requests per minute per IP
+
+  const current = rateLimiter.get(ip)
+
+  if (!current || now > current.resetTime) {
+    rateLimiter.set(ip, { count: 1, resetTime: now + windowMs })
+  } else if (current.count >= limit) {
+    return c.json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+  } else {
+    current.count++
+  }
+
+  await next()
+})
+
 // Bot Heuristics Blocker: mitigates automated scraping/metric manipulation
 const botPatterns = [
   /headless/i,
@@ -28,7 +50,8 @@ app.use('*', async (c, next) => {
   
   // Allow automated runs if local dev or authorized with E2E bypass secret
   const isLocal = c.req.url.includes('localhost') || c.req.url.includes('127.0.0.1')
-  const isAuthorizedE2E = e2eSecret && e2eSecret === process.env.E2E_TEST_SECRET
+  const E2E_SECRET = process.env.E2E_TEST_SECRET
+  const isAuthorizedE2E = E2E_SECRET && e2eSecret === E2E_SECRET
 
   if (botPatterns.some(p => p.test(ua)) && !isAuthorizedE2E && !isLocal) {
     return c.json({ error: 'Bot traffic detected' }, 403)
