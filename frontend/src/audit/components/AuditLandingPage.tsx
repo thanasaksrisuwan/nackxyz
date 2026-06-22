@@ -5,6 +5,7 @@ import { m } from 'framer-motion';
 import { Gavel, Scale, Eye, AlertTriangle } from 'lucide-react';
 import { getOrAssignVariant, headlines } from '../abTest';
 import type { AbVariant } from '../types';
+import { getApiUrl } from '../../utils/api';
 
 interface AuditLandingPageProps {
   onStart: () => void;
@@ -46,8 +47,7 @@ export default function AuditLandingPage({ onStart }: AuditLandingPageProps) {
       setVariant(v);
     }, 0);
 
-    // Fire-and-forget impression event
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/impression`, {
+    fetch(`${getApiUrl()}/api/audit/impression`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ variant: v, timestamp: new Date().toISOString() }),

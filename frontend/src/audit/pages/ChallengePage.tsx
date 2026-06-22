@@ -7,6 +7,7 @@ import AuditGame from '../AuditGame';
 import type { GetVerdictResponse } from '../types';
 import { archetypes } from '../data/archetypes';
 import { auditTokens } from '../tokens';
+import { getApiUrl } from '../../utils/api';
 
 export default function ChallengePage() {
   const searchParams = useSearchParams();
@@ -20,7 +21,7 @@ export default function ChallengePage() {
 
     async function fetchVerdict() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/verdict/${verdictId}`);
+        const response = await fetch(`${getApiUrl()}/api/audit/verdict/${verdictId}`);
         if (cancelled) return;
 
         if (response.status === 404) {

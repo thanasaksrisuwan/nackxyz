@@ -8,6 +8,7 @@ import { questions, calculateResult } from '../../soul-drink/data/questions';
 import type { Option, Axis } from '../../soul-drink/data/questions';
 import QuestionCard from '../../soul-drink/components/QuestionCard';
 import ResultCard from '../../soul-drink/components/ResultCard';
+import { getApiUrl } from '../../utils/api';
 
 type GameState = 'START' | 'PLAYING' | 'RESULT';
 type Scores = Record<Axis, number>;
@@ -48,7 +49,7 @@ export default function SoulDrinkRoot() {
     setGameState('RESULT');
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
+      const API_URL = getApiUrl();
 
       const response = await fetch(`${API_URL}/api/stats`, {
         method: 'POST',

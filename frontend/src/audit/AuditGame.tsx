@@ -10,6 +10,7 @@ import CasePlayer from './components/CasePlayer';
 import MicroRoastModal from './components/MicroRoastModal';
 import VerdictPage from './components/VerdictPage';
 import ErrorView from './components/ErrorView';
+import { getApiUrl } from '../utils/api';
 
 // ---------------------------------------------------------------------------
 // AuditGame
@@ -75,7 +76,7 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
 
     async function runCalculation() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/audit/verdict`, {
+        const res = await fetch(`${getApiUrl()}/api/audit/verdict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ evidenceLog }),
