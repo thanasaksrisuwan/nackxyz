@@ -11,8 +11,8 @@ import type { AbVariant } from '../types';
 const AB_KEY = 'audit_ab_variant';
 const VALID_VARIANTS: AbVariant[] = ['A', 'B', 'C'];
 
-// Use a simple in-memory localStorage mock so tests are isolated
-function makeLocalStorageMock() {
+// Use a simple in-memory sessionStorage mock so tests are isolated
+function makeSessionStorageMock() {
   let store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] ?? null),
@@ -23,18 +23,18 @@ function makeLocalStorageMock() {
 }
 
 describe('getOrAssignVariant()', () => {
-  let localStorageMock: ReturnType<typeof makeLocalStorageMock>;
+  let sessionStorageMock: ReturnType<typeof makeSessionStorageMock>;
 
   beforeEach(() => {
-    localStorageMock = makeLocalStorageMock();
-    vi.stubGlobal('localStorage', localStorageMock);
+    sessionStorageMock = makeSessionStorageMock();
+    vi.stubGlobal('sessionStorage', sessionStorageMock);
   });
 
-  it('returns the stored variant when one is already in localStorage', () => {
+  it('returns the stored variant when one is already in sessionStorage', () => {
     // Arrange: pre-populate with each valid variant
     for (const variant of VALID_VARIANTS) {
-      localStorageMock.clear();
-      localStorageMock.setItem(AB_KEY, variant);
+      sessionStorageMock.clear();
+      sessionStorageMock.setItem(AB_KEY, variant);
 
       // Act
       const result = getOrAssignVariant();
@@ -42,12 +42,12 @@ describe('getOrAssignVariant()', () => {
       // Assert
       expect(result).toBe(variant);
       // getItem was called; setItem should NOT be called a second time
-      expect(localStorageMock.getItem).toHaveBeenCalledWith(AB_KEY);
+      expect(sessionStorageMock.getItem).toHaveBeenCalledWith(AB_KEY);
     }
   });
 
-  it('picks and stores a new variant when localStorage is empty', () => {
-    // localStorage mock starts empty — no pre-existing value
+  it('picks and stores a new variant when sessionStorage is empty', () => {
+    // sessionStorage mock starts empty — no pre-existing value
 
     const result = getOrAssignVariant();
 
@@ -55,15 +55,15 @@ describe('getOrAssignVariant()', () => {
     expect(VALID_VARIANTS).toContain(result);
 
     // It must have been persisted so the next call returns the same value
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(AB_KEY, result);
+    expect(sessionStorageMock.setItem).toHaveBeenCalledWith(AB_KEY, result);
   });
 
   it('returns only valid AbVariant values ("A", "B", or "C")', () => {
     // Run multiple times to cover randomness; each call uses a fresh store
     for (let i = 0; i < 20; i++) {
-      localStorageMock.clear();
+      sessionStorageMock.clear();
       // Reset call history for setItem so we can inspect each fresh call
-      localStorageMock.setItem.mockClear();
+      sessionStorageMock.setItem.mockClear();
 
       const result = getOrAssignVariant();
 
@@ -73,13 +73,13 @@ describe('getOrAssignVariant()', () => {
 
   it('ignores an invalid stored value and assigns a fresh variant', () => {
     // If somehow a corrupt/invalid value ended up in storage it should be replaced
-    localStorageMock.setItem(AB_KEY, 'INVALID' as AbVariant);
-    localStorageMock.setItem.mockClear(); // reset so we can detect the new write
+    sessionStorageMock.setItem(AB_KEY, 'INVALID' as AbVariant);
+    sessionStorageMock.setItem.mockClear(); // reset so we can detect the new write
 
     const result = getOrAssignVariant();
 
     expect(VALID_VARIANTS).toContain(result);
-    // A new valid variant must have been written to localStorage
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(AB_KEY, result);
+    // A new valid variant must have been written to sessionStorage
+    expect(sessionStorageMock.setItem).toHaveBeenCalledWith(AB_KEY, result);
   });
 });

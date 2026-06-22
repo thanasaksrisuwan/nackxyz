@@ -124,7 +124,7 @@ describe('Hono Error Handler Tests', () => {
 
     const data = await res.json()
     expect(data.error).toBe('Internal Server Error')
-    expect(data.message).toBe('Simulated backend failure')
+    expect(data.message).toBeUndefined()
   })
 })
 

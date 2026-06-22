@@ -7,10 +7,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AuditSessionState } from '../types';
 
-// ── localStorage must be stubbed BEFORE state.ts is imported ─────────────────
+// ── sessionStorage must be stubbed BEFORE state.ts is imported ─────────────────
 // state.ts calls getOrAssignVariant() at module-evaluation time (initialAuditState).
 // vi.hoisted runs before imports, so the stub is in place when the module loads.
-const { localStorageMock } = vi.hoisted(() => {
+const { sessionStorageMock } = vi.hoisted(() => {
   let store: Record<string, string> = { audit_ab_variant: 'A' };
   const mock = {
     getItem: vi.fn((key: string) => store[key] ?? null),
@@ -19,16 +19,16 @@ const { localStorageMock } = vi.hoisted(() => {
     clear: vi.fn(() => { store = { audit_ab_variant: 'A' }; }),
     _reset: () => { store = { audit_ab_variant: 'A' }; },
   };
-  vi.stubGlobal('localStorage', mock);
-  return { localStorageMock: mock };
+  vi.stubGlobal('sessionStorage', mock);
+  return { sessionStorageMock: mock };
 });
 
 import { auditReducer, initialAuditState } from '../state';
 
 beforeEach(() => {
-  localStorageMock._reset();
-  localStorageMock.getItem.mockClear();
-  localStorageMock.setItem.mockClear();
+  sessionStorageMock._reset();
+  sessionStorageMock.getItem.mockClear();
+  sessionStorageMock.setItem.mockClear();
 });
 
 // ── Helper: build a minimal state snapshot ──────────────────────────────────

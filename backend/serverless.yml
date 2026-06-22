@@ -47,10 +47,7 @@ resources:
         KeySchema:
           - AttributeName: archetypeId
             KeyType: HASH
-        BillingMode: PROVISIONED
-        ProvisionedThroughput:
-          ReadCapacityUnits: 8
-          WriteCapacityUnits: 8
+        BillingMode: PAY_PER_REQUEST
 
     SoulDrinkStatsTable:
       Type: AWS::DynamoDB::Table
@@ -62,10 +59,7 @@ resources:
         KeySchema:
           - AttributeName: result_id
             KeyType: HASH
-        BillingMode: PROVISIONED
-        ProvisionedThroughput:
-          ReadCapacityUnits: 8
-          WriteCapacityUnits: 8
+        BillingMode: PAY_PER_REQUEST
 
     AuditVerdictsTable:
       Type: AWS::DynamoDB::Table
@@ -77,11 +71,18 @@ resources:
         KeySchema:
           - AttributeName: verdict_id
             KeyType: HASH
-        BillingMode: PROVISIONED
-        ProvisionedThroughput:
-          ReadCapacityUnits: 8
-          WriteCapacityUnits: 8
+        BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:
           AttributeName: ttl_expires_at
           Enabled: true
+
+    HttpApiStage:
+      Type: AWS::ApiGatewayV2::Stage
+      Properties:
+        ApiId: { Ref: HttpApi }
+        StageName: $default
+        RouteSettings:
+          "$default":
+            ThrottlingBurstLimit: 100
+            ThrottlingRateLimit: 50
 

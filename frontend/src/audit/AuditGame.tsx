@@ -25,7 +25,7 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
   const [state, dispatch] = useReducer(auditReducer, initialAuditState, (initial) => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('nanobanana_audit_state');
+        const saved = sessionStorage.getItem('nanobanana_audit_state');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.gameState && parsed.gameState !== 'VERDICT' && parsed.gameState !== 'ERROR') {
@@ -43,11 +43,11 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
   });
   const { gameState, evidenceLog, error, currentCaseIndex, verdictResult } = state;
 
-  // Save state to localStorage to prevent data loss on refresh
+  // Save state to sessionStorage to prevent data loss on refresh
   useEffect(() => {
     if (gameState !== 'VERDICT' && gameState !== 'ERROR') {
       try {
-        localStorage.setItem(
+        sessionStorage.setItem(
           'nanobanana_audit_state',
           JSON.stringify({
             gameState,
@@ -60,7 +60,7 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
       }
     } else {
       try {
-        localStorage.removeItem('nanobanana_audit_state');
+        sessionStorage.removeItem('nanobanana_audit_state');
       } catch (e) {
         // ignore
       }

@@ -26,9 +26,10 @@ app.use('/*', cors({
       return origin
     }
 
-    // Check Cloudflare Pages subdomains for this repo (e.g. preview deployments)
-    // Supports domains like xxx.nackxyz.pages.dev or xxx-nackxyz.pages.dev
-    if (origin.endsWith('.pages.dev') && (origin.includes('nackxyz') || origin.includes('dev-persona') || origin.includes('aws-lab'))) {
+    // Secure origin pattern matching:
+    // Only allow exact match on nackxyz.pages.dev or its subdomains (e.g. c29b68a6.nackxyz.pages.dev)
+    const safeRegex = /^https?:\/\/([a-zA-Z0-9-]+\.)?nackxyz\.pages\.dev$/;
+    if (safeRegex.test(origin)) {
       return origin
     }
 
@@ -52,6 +53,22 @@ app.get('/', (c) => {
   return c.json({ status: 'ok', service: 'dev-persona-api' })
 })
 
+const devPersonaPayloadSchema = z.object({
+  archetypeId: z.enum([
+    'deadline_necromancer',
+    'emotional_support',
+    'dopamine_investor',
+    'productivity_tourist',
+    'functional_zombie',
+    'chaos_ceo',
+    'accidental_genius'
+  ])
+})
+
+const soulDrinkPayloadSchema = z.object({
+  result_id: z.string().min(1).max(50)
+})
+
 // POST /api/results - Increment count for an archetype
 app.post('/api/results', async (c) => {
   try {
@@ -68,25 +85,12 @@ app.post('/api/results', async (c) => {
       return c.json({ error: 'Invalid JSON' }, 400)
     }
 
-    const { archetypeId } = body
-
-    if (!archetypeId) {
-      return c.json({ error: 'archetypeId is required' }, 400)
+    const validation = devPersonaPayloadSchema.safeParse(body)
+    if (!validation.success) {
+      return c.json({ error: 'Invalid payload schema', details: validation.error.format() }, 400)
     }
 
-    const validArchetypes = [
-      'deadline_necromancer',
-      'emotional_support',
-      'dopamine_investor',
-      'productivity_tourist',
-      'functional_zombie',
-      'chaos_ceo',
-      'accidental_genius'
-    ]
-
-    if (!validArchetypes.includes(archetypeId)) {
-      return c.json({ error: 'Invalid archetypeId' }, 400)
-    }
+    const { archetypeId } = validation.data
 
     // Update DynamoDB item: increment count by 1 (creates item if not exists)
     const command = new UpdateCommand({
@@ -112,19 +116,29 @@ app.post('/api/results', async (c) => {
     })
   } catch (error: any) {
     console.error('Error recording result:', error)
-    return c.json({ error: 'Internal Server Error', message: error.message }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
 // GET /api/stats - Get counts for all archetypes
 app.get('/api/stats', async (c) => {
   try {
-    const command = new ScanCommand({
-      TableName: tableName
-    })
+    // Enable browser and CDN caching for stats (10s fresh, 30s stale-while-revalidate)
+    c.header('Cache-Control', 'public, max-age=10, stale-while-revalidate=30')
 
-    const response = await docClient.send(command)
-    const items = response.Items || []
+    let items: any[] = []
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined
+
+    do {
+      const command: ScanCommand = new ScanCommand({
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey,
+        Limit: 50
+      })
+      const response = await docClient.send(command)
+      items = items.concat(response.Items || [])
+      lastEvaluatedKey = response.LastEvaluatedKey
+    } while (lastEvaluatedKey)
 
     // Map DynamoDB items to simple key-value object
     const stats: Record<string, number> = {}
@@ -160,19 +174,31 @@ app.get('/api/stats', async (c) => {
     })
   } catch (error: any) {
     console.error('Error fetching stats:', error)
-    return c.json({ error: 'Internal Server Error', message: error.message }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
 // POST /api/stats - Increment count for a specific result_id (Soul Drink)
 app.post('/api/stats', async (c) => {
   try {
-    const body = await c.req.json()
-    const resultId = body.result_id
-
-    if (!resultId) {
-      return c.json({ error: 'result_id is required' }, 400)
+    const bodyText = await c.req.text()
+    if (bodyText.length > 200) {
+      return c.json({ error: 'Payload too large' }, 413)
     }
+
+    let body
+    try {
+      body = JSON.parse(bodyText)
+    } catch {
+      return c.json({ error: 'Invalid JSON' }, 400)
+    }
+
+    const validation = soulDrinkPayloadSchema.safeParse(body)
+    if (!validation.success) {
+      return c.json({ error: 'Invalid payload schema', details: validation.error.format() }, 400)
+    }
+
+    const { result_id: resultId } = validation.data
 
     const command = new UpdateCommand({
       TableName: soulDrinkTable,
@@ -192,7 +218,7 @@ app.post('/api/stats', async (c) => {
     })
   } catch (error: any) {
     console.error('Error updating Soul Drink stats:', error)
-    return c.json({ error: 'Failed to update stats' }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
@@ -214,7 +240,7 @@ app.get('/api/stats/:id', async (c) => {
     })
   } catch (error: any) {
     console.error('Error fetching Soul Drink stats:', error)
-    return c.json({ error: 'Failed to fetch stats' }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
@@ -258,7 +284,7 @@ app.post('/api/audit/verdict', async (c) => {
     })
   } catch (error: any) {
     console.error('Error saving audit verdict:', error)
-    return c.json({ error: 'Failed to save verdict', message: error.message }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
@@ -278,7 +304,7 @@ app.get('/api/audit/verdict/:verdictId', async (c) => {
     })
   } catch (error: any) {
     console.error('Error fetching audit verdict:', error)
-    return c.json({ error: 'Failed to fetch verdict' }, 500)
+    return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
 
@@ -293,13 +319,14 @@ app.post('/api/audit/impression', async (c) => {
   return c.json({ success: true })
 })
 
-// Global Error Handler with Discord Alerting
+// Global Error Handler with Discord Alerting (Sanitized)
 app.onError(async (err, c) => {
   console.error('Unhandled Exception:', err)
 
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
   if (webhookUrl) {
     try {
+      // Sanitize error info: do NOT leak details/stack traces to external alert payloads
       const payload = {
         embeds: [{
           title: '🚨 Backend Service Error (500)',
@@ -307,8 +334,8 @@ app.onError(async (err, c) => {
           fields: [
             { name: 'Method', value: c.req.method, inline: true },
             { name: 'URL', value: c.req.url, inline: true },
-            { name: 'Message', value: err.message || 'Unknown error' },
-            { name: 'Stack Trace', value: `\`\`\`javascript\n${(err.stack || '').slice(0, 800)}\n\`\`\`` }
+            { name: 'Error Name', value: err.name || 'Error', inline: true },
+            { name: 'Info', value: 'Detailed stack trace is logged securely in AWS CloudWatch logs.' }
           ],
           timestamp: new Date().toISOString()
         }]
@@ -326,7 +353,8 @@ app.onError(async (err, c) => {
     }
   }
 
-  return c.json({ error: 'Internal Server Error', message: err.message }, 500)
+  // Generic internal server error response returned to client (prevents information disclosure)
+  return c.json({ error: 'Internal Server Error' }, 500)
 })
 
 export const handler = handle(app)
