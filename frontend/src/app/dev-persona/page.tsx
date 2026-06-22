@@ -18,8 +18,9 @@ const landingVersions = [
 ]
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false)
   const [gameState, setGameState] = useState<'hero' | 'quiz' | 'calculating' | 'result'>('hero')
-  const [heroContent] = useState(() => landingVersions[Math.floor(Math.random() * landingVersions.length)])
+  const [heroContent, setHeroContent] = useState(landingVersions[0])
 
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
@@ -32,6 +33,12 @@ export default function Home() {
   // Roast message animation index
   const [roastIdx, setRoastIdx] = useState(0)
 
+  // Set mounted + randomize heroContent on client only (fix Hydration Mismatch #418)
+  useEffect(() => {
+    setHeroContent(landingVersions[Math.floor(Math.random() * landingVersions.length)])
+    setIsMounted(true)
+  }, [])
+
   // Rotate roast messages during calculation
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined
@@ -42,6 +49,9 @@ export default function Home() {
     }
     return () => clearInterval(interval)
   }, [gameState])
+
+  // Don't render randomized content until client has mounted (prevents SSR/CSR mismatch)
+  if (!isMounted) return null
 
   const handleStartQuiz = () => {
     setAnswers({})

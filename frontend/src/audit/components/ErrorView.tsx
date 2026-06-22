@@ -2,7 +2,8 @@
 
 // src/audit/components/ErrorView.tsx
 import React from 'react';
-import { auditTokens } from '../tokens';
+import { m } from 'framer-motion';
+import { AlertOctagon, RefreshCw } from 'lucide-react';
 
 interface ErrorViewProps {
   message: string;
@@ -14,46 +15,49 @@ const ErrorView: React.FC<ErrorViewProps> = ({ message, onRestart }) => {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: auditTokens.bg,
-        padding: '24px',
-        boxSizing: 'border-box',
-      }}
+      className="min-h-screen flex flex-col items-center justify-center px-6 gap-7 relative overflow-hidden"
+      style={{ backgroundColor: '#09090b' }}
     >
-      <p
-        style={{
-          color: auditTokens.textPrimary,
-          fontSize: '1.125rem',
-          textAlign: 'center',
-          marginBottom: '32px',
-          maxWidth: '400px',
-          lineHeight: 1.6,
-        }}
-      >
-        {displayMessage}
-      </p>
+      {/* Ambient glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.05)_0%,transparent_70%)] pointer-events-none" />
 
-      <button
-        onClick={onRestart}
-        style={{
-          backgroundColor: auditTokens.accentRed,
-          color: '#FFFFFF',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '12px 32px',
-          fontSize: '1rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-          letterSpacing: '0.02em',
-        }}
+      {/* Icon */}
+      <m.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center"
       >
+        <AlertOctagon className="w-8 h-8 text-red-400" />
+      </m.div>
+
+      {/* Message */}
+      <m.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.4 }}
+        className="flex flex-col items-center gap-2 text-center"
+      >
+        <h2 className="text-lg font-bold text-white">เกิดข้อผิดพลาด</h2>
+        <p className="text-zinc-400 text-sm leading-relaxed max-w-[300px]">
+          {displayMessage}
+        </p>
+      </m.div>
+
+      {/* Restart button */}
+      <m.button
+        onClick={onRestart}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25, duration: 0.4 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        className="flex items-center gap-2 px-6 h-11 rounded-xl font-bold text-sm text-white cursor-pointer transition-all"
+        style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}
+      >
+        <RefreshCw className="w-4 h-4" />
         เริ่มใหม่
-      </button>
+      </m.button>
     </div>
   );
 };

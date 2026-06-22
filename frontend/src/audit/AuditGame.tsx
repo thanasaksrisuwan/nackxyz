@@ -152,8 +152,43 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
 
       case 'CALCULATING':
         return (
-          <m.div key="calculating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div data-testid="calculating-view">กำลังวิเคราะห์...</div>
+          <m.div
+            key="calculating"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-testid="calculating-view"
+          >
+            <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-8 relative overflow-hidden" style={{ backgroundColor: '#09090b' }}>
+              {/* Ambient glow */}
+              <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-red-500/8 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Spinner */}
+              <div className="relative w-20 h-20">
+                <div className="absolute inset-0 rounded-full border-4 border-zinc-800" />
+                <div className="absolute inset-0 rounded-full border-4 border-t-red-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                <div className="absolute inset-3 rounded-full border-2 border-t-transparent border-r-red-400/50 border-b-transparent border-l-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+              </div>
+
+              {/* Text */}
+              <div className="flex flex-col items-center gap-3 text-center">
+                <h3 className="text-xl font-bold text-white tracking-wide">กำลังวิเคราะห์หลักฐาน...</h3>
+                <p className="text-sm text-zinc-500 font-mono italic max-w-[260px] leading-relaxed">
+                  &ldquo;ระบบกำลังประมวลผลพฤติกรรมที่คุณพยายามซ่อน&rdquo;
+                </p>
+              </div>
+
+              {/* Animated segment dots */}
+              <div className="flex gap-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-red-500"
+                    style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                  />
+                ))}
+              </div>
+            </div>
           </m.div>
         );
 

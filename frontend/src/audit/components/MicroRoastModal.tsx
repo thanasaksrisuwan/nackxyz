@@ -4,7 +4,8 @@
 // Full-screen micro-roast overlay shown at case 3 and case 7 checkpoints.
 // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
 
-import { m } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
+import { AlertTriangle } from 'lucide-react';
 import type { EvidenceLog } from '../types';
 import { getLeadingArchetype } from '../verdictCalculator';
 import { microRoasts } from '../data/microRoasts';
@@ -22,82 +23,61 @@ export function MicroRoastModal({ evidenceLog, onConfirm }: MicroRoastModalProps
 
   return (
     // Backdrop: full-screen, blocks all background interaction
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 50,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        pointerEvents: 'all',
-      }}
-    >
-      {/* Animated modal card */}
-      <m.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        style={{
-          backgroundColor: '#1a1a1a',
-          border: '1px solid #333',
-          borderRadius: '12px',
-          padding: '2.5rem 2rem',
-          maxWidth: '480px',
-          width: '90%',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.5rem',
-        }}
-      >
-        {/* Roast label */}
-        <p
-          style={{
-            fontSize: '0.75rem',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: '#FF4D4D',
-            margin: 0,
-          }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-5 bg-black/80 backdrop-blur-sm">
+      <AnimatePresence>
+        {/* Animated modal card */}
+        <m.div
+          initial={{ scale: 0.85, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.85, opacity: 0, y: 20 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl p-7 text-center flex flex-col items-center gap-5 shadow-2xl relative overflow-hidden"
+          style={{ boxShadow: '0 0 60px -10px rgba(239, 68, 68, 0.3), 0 20px 50px rgba(0,0,0,0.5)' }}
         >
-          ระบบตรวจพบ
-        </p>
+          {/* Background glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(239,68,68,0.06)_0%,transparent_70%)] pointer-events-none" />
 
-        {/* Roast text */}
-        <p
-          style={{
-            fontSize: '1.375rem',
-            fontWeight: 700,
-            color: '#ffffff',
-            lineHeight: 1.5,
-            margin: 0,
-          }}
-        >
-          {roastText}
-        </p>
+          {/* Alert Icon */}
+          <div className="relative z-10 w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+            <AlertTriangle className="w-7 h-7 text-red-400" />
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-zinc-950 animate-pulse" />
+          </div>
 
-        {/* Confirm button — only interaction available */}
-        <button
-          onClick={onConfirm}
-          style={{
-            backgroundColor: '#FF4D4D',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '0.75rem 2rem',
-            fontSize: '1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            alignSelf: 'center',
-            minWidth: '140px',
-          }}
-        >
-          รับทราบ
-        </button>
-      </m.div>
+          {/* Roast label */}
+          <div className="relative z-10 flex items-center gap-2">
+            <div className="h-px w-8 bg-red-500/40" />
+            <p className="text-[10px] font-mono font-bold tracking-widest text-red-400 uppercase">
+              ระบบตรวจพบ
+            </p>
+            <div className="h-px w-8 bg-red-500/40" />
+          </div>
+
+          {/* Roast text */}
+          <p className="relative z-10 text-xl font-black text-white leading-snug tracking-tight max-w-[280px]">
+            {roastText}
+          </p>
+
+          {/* Divider */}
+          <div className="w-full h-px bg-zinc-800 relative z-10" />
+
+          {/* Confirm button */}
+          <m.button
+            onClick={onConfirm}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 25px -5px rgba(239,68,68,0.5)' }}
+            whileTap={{ scale: 0.97 }}
+            className="relative z-10 w-full h-11 rounded-xl font-bold text-sm uppercase tracking-wider text-white cursor-pointer transition-all duration-200"
+            style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            }}
+          >
+            รับทราบ — สู้ต่อ
+          </m.button>
+
+          <p className="relative z-10 text-[10px] text-zinc-600 font-mono">
+            อีก {Object.keys(evidenceLog).length >= 7 ? 1 : 8 - Object.keys(evidenceLog).length} Case ก่อนถึง Verdict สุดท้าย
+          </p>
+        </m.div>
+      </AnimatePresence>
     </div>
   );
 }

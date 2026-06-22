@@ -3,8 +3,8 @@
 // src/audit/components/CasePlayer.tsx
 
 import React, { useState, useRef } from 'react';
+import { m, AnimatePresence } from 'framer-motion';
 import type { AuditCase, AuditEvidence, MainArchetypeId } from '../types';
-import { auditTokens } from '../tokens';
 import { CaseProgressBar } from './CaseProgressBar';
 import { EvidenceCard } from './EvidenceCard';
 
@@ -43,39 +43,67 @@ export function CasePlayer({ auditCase, caseNumber, onSubmitEvidence }: CasePlay
 
   return (
     <div
-      style={{
-        backgroundColor: auditTokens.bg,
-        color: auditTokens.textPrimary,
-        minHeight: '100%',
-      }}
-      className="flex flex-col px-4 py-6 gap-6"
+      className="min-h-screen flex flex-col px-4 py-6 gap-6 relative overflow-hidden"
+      style={{ backgroundColor: '#09090b' }}
     >
+      {/* Ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+
       {/* Progress bar — no back button */}
-      <CaseProgressBar currentCase={caseNumber} />
+      <div className="relative z-10">
+        <CaseProgressBar currentCase={caseNumber} />
+      </div>
 
       {/* Case prompt */}
-      <p
-        lang="th"
-        className="text-base leading-relaxed text-center px-2"
-        style={{ color: auditTokens.textPrimary }}
-      >
-        {auditCase.text}
-      </p>
+      <AnimatePresence mode="wait">
+        <m.div
+          key={caseNumber}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="relative z-10 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-5 shadow-xl"
+          style={{ boxShadow: '0 0 30px -5px rgba(239,68,68,0.08)' }}
+        >
+          {/* Label */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] font-mono font-bold tracking-widest text-red-400 uppercase">
+              Case File {caseNumber.toString().padStart(2, '0')}
+            </span>
+          </div>
+          <p
+            lang="th"
+            className="text-base leading-relaxed text-zinc-100 font-medium"
+          >
+            {auditCase.text}
+          </p>
+        </m.div>
+      </AnimatePresence>
 
       {/* Evidence cards */}
-      <div className="flex flex-col gap-3">
-        {auditCase.evidences.map((evidence) => {
+      <div className="flex flex-col gap-3 relative z-10">
+        <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase text-center">
+          เลือกหลักฐานที่ตรงกับตัวคุณมากที่สุด
+        </p>
+        {auditCase.evidences.map((evidence, idx) => {
           const isSelected = selectedId === evidence.id;
           const isDisabled = isSubmitting && !isSelected;
 
           return (
-            <EvidenceCard
+            <m.div
               key={evidence.id}
-              evidence={evidence}
-              onSelect={handleSelect}
-              isSelected={isSelected}
-              isDisabled={isDisabled}
-            />
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.06, duration: 0.3, ease: 'easeOut' }}
+            >
+              <EvidenceCard
+                evidence={evidence}
+                onSelect={handleSelect}
+                isSelected={isSelected}
+                isDisabled={isDisabled}
+              />
+            </m.div>
           );
         })}
       </div>
