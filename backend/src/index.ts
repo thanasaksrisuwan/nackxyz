@@ -1,13 +1,40 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/aws-lambda'
 import { cors } from 'hono/cors'
+import { requestId } from 'hono/request-id'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand, ScanCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { z } from 'zod'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
 import { submitVerdictSchema, calculateVerdict } from './verdictCalculator'
 
 export const app = new Hono()
+
+// Enable UUID request correlation mapping
+app.use('*', requestId())
+
+// Bot Heuristics Blocker: mitigates automated scraping/metric manipulation
+const botPatterns = [
+  /headless/i,
+  /playwright/i,
+  /puppeteer/i,
+  /phantom/i,
+  /selenium/i
+]
+
+app.use('*', async (c, next) => {
+  const ua = c.req.header('user-agent') || ''
+  const e2eSecret = c.req.header('x-e2e-test-secret')
+  
+  // Allow automated runs if local dev or authorized with E2E bypass secret
+  const isLocal = c.req.url.includes('localhost') || c.req.url.includes('127.0.0.1')
+  const isAuthorizedE2E = e2eSecret && e2eSecret === process.env.E2E_TEST_SECRET
+
+  if (botPatterns.some(p => p.test(ua)) && !isAuthorizedE2E && !isLocal) {
+    return c.json({ error: 'Bot traffic detected' }, 403)
+  }
+  await next()
+})
 
 // Define allowed CORS origins
 const ALLOWED_ORIGINS = [
@@ -47,6 +74,12 @@ const auditTable = process.env.AUDIT_VERDICTS_TABLE || 'audit-verdicts'
 const AUDIT_VERDICT_TTL_DAYS = Number(process.env.AUDIT_VERDICT_TTL_DAYS || '30')
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-southeast-1' })
 const docClient = DynamoDBDocumentClient.from(client)
+
+// Alerting target initialization check
+const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+if (!webhookUrl) {
+  console.warn('WARNING: DISCORD_WEBHOOK_URL environment variable is missing. Unhandled service errors will fail to trigger Discord alerting.')
+}
 
 // Root endpoint for health check
 app.get('/', (c) => {
@@ -256,10 +289,17 @@ app.post('/api/audit/verdict', async (c) => {
     const { evidenceLog } = validation.data
     const verdictBase = calculateVerdict(evidenceLog)
 
-    // Save verdict to database
+    // Save verdict to database with enhanced audit trail metadata
     const verdictId = randomUUID()
     const now = new Date()
     const ttlSeconds = Math.floor(now.getTime() / 1000) + AUDIT_VERDICT_TTL_DAYS * 24 * 60 * 60
+
+    // Calculate anonymized privacy-compliant logs for correlation
+    const rawIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+    const rawUa = c.req.header('user-agent') || 'unknown'
+    const ipHash = createHash('sha256').update(rawIp).digest('hex')
+    const uaHash = createHash('sha256').update(rawUa).digest('hex')
+    const countryCode = c.req.header('cf-ipcountry') || 'XX'
 
     await docClient.send(new PutCommand({
       TableName: auditTable,
@@ -270,6 +310,10 @@ app.post('/api/audit/verdict', async (c) => {
         archetype_scores: verdictBase.archetypeScores,
         is_secret: verdictBase.isSecret,
         created_at: now.toISOString(),
+        submitted_at: now.toISOString(),
+        ip_hash: ipHash,
+        user_agent_hash: uaHash,
+        country_code: countryCode,
         ttl_expires_at: ttlSeconds,
       },
     }))
@@ -319,11 +363,11 @@ app.post('/api/audit/impression', async (c) => {
   return c.json({ success: true })
 })
 
-// Global Error Handler with Discord Alerting (Sanitized)
+// Global Error Handler with Discord Alerting (Sanitized & Correlated)
 app.onError(async (err, c) => {
-  console.error('Unhandled Exception:', err)
+  const reqId = c.get('requestId') || 'N/A'
+  console.error(`[Request ID: ${reqId}] Unhandled Exception:`, err)
 
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
   if (webhookUrl) {
     try {
       // Sanitize error info: do NOT leak details/stack traces to external alert payloads
@@ -332,6 +376,7 @@ app.onError(async (err, c) => {
           title: '🚨 Backend Service Error (500)',
           color: 16711680, // Hex: 0xff0000
           fields: [
+            { name: 'Request ID', value: reqId, inline: true },
             { name: 'Method', value: c.req.method, inline: true },
             { name: 'URL', value: c.req.url, inline: true },
             { name: 'Error Name', value: err.name || 'Error', inline: true },

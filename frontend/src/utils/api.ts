@@ -1,7 +1,7 @@
 export function getApiUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-  if (!base || base.includes('lambda-url')) {
-    return 'https://m6751bukx5.execute-api.ap-southeast-1.amazonaws.com';
+  const base = process.env.NEXT_PUBLIC_API_URL;
+  if (!base) {
+    throw new Error('NEXT_PUBLIC_API_URL environment variable is missing');
   }
   return base;
 }
