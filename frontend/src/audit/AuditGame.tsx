@@ -130,6 +130,7 @@ export default function AuditGame({ challengeVerdictId, defendantVerdict }: Audi
         return (
           <m.div key="investigating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <CasePlayer
+              key={currentCaseIndex}
               auditCase={auditCases[currentCaseIndex]}
               caseNumber={currentCaseIndex + 1}
               onSubmitEvidence={(caseIndex, archetype) => {

@@ -3,4 +3,4 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-XSS-Protection: 1; mode=block
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.lambda-url.ap-southeast-1.on.aws https://cloudflareinsights.com; worker-src 'self' blob:; img-src 'self' data: https:; frame-ancestors 'none';
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.lambda-url.ap-southeast-1.on.aws https://*.execute-api.ap-southeast-1.amazonaws.com https://cloudflareinsights.com; worker-src 'self' blob:; img-src 'self' data: https:; frame-ancestors 'none';

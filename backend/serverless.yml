@@ -32,6 +32,8 @@ functions:
   api:
     handler: src/index.handler
     url: true
+    events:
+      - httpApi: '*'
 
 resources:
   Resources:
