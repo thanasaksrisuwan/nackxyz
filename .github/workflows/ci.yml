@@ -26,6 +26,11 @@ jobs:
           cd frontend
           npm install
 
+      - name: Run Dependency Audit
+        run: |
+          cd frontend
+          npm audit --audit-level=high || echo "High/Critical vulnerabilities found. Review audit report."
+
       - name: Run Linting
         run: |
           cd frontend
@@ -54,6 +59,11 @@ jobs:
         run: |
           cd backend
           npm install
+
+      - name: Run Dependency Audit
+        run: |
+          cd backend
+          npm audit --audit-level=high || echo "High/Critical vulnerabilities found. Review audit report."
 
       - name: Run Tests
         run: |
