@@ -48,7 +48,10 @@ resources:
         KeySchema:
           - AttributeName: archetypeId
             KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
+        BillingMode: PROVISIONED
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
 
     SoulDrinkStatsTable:
       Type: AWS::DynamoDB::Table
@@ -60,7 +63,10 @@ resources:
         KeySchema:
           - AttributeName: result_id
             KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
+        BillingMode: PROVISIONED
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
 
     AuditVerdictsTable:
       Type: AWS::DynamoDB::Table
@@ -72,7 +78,10 @@ resources:
         KeySchema:
           - AttributeName: verdict_id
             KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
+        BillingMode: PROVISIONED
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
         TimeToLiveSpecification:
           AttributeName: ttl_expires_at
           Enabled: true
