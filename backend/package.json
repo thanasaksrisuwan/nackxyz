@@ -16,6 +16,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@aws-lambda-powertools/logger": "^2.33.1",
     "@aws-sdk/client-dynamodb": "^3.1065.0",
     "@aws-sdk/lib-dynamodb": "^3.1065.0",
     "hono": "^4.12.25",

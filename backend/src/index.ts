@@ -7,8 +7,26 @@ import { DynamoDBDocumentClient, UpdateCommand, ScanCommand, GetCommand, PutComm
 import { z } from 'zod'
 import { randomUUID, createHash } from 'crypto'
 import { submitVerdictSchema, calculateVerdict } from './verdictCalculator'
+import { Logger } from '@aws-lambda-powertools/logger'
 
 export const app = new Hono()
+
+// Initialize Lambda Powertools structured JSON logger
+const logger = new Logger({
+  serviceName: 'dev-persona-api',
+  logLevel: 'INFO'
+})
+
+function getLogContext(c: any) {
+  const rawIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+  const ipHash = createHash('sha256').update(rawIp).digest('hex')
+  return {
+    requestId: c.get('requestId') || 'N/A',
+    method: c.req.method,
+    url: c.req.url,
+    ipHash
+  }
+}
 
 // Enable UUID request correlation mapping
 app.use('*', requestId())
@@ -27,6 +45,7 @@ app.use('*', async (c, next) => {
   if (!current || now > current.resetTime) {
     rateLimiter.set(ip, { count: 1, resetTime: now + windowMs })
   } else if (current.count >= limit) {
+    logger.warn('Rate limit exceeded for IP', { ...getLogContext(c) })
     return c.json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
   } else {
     current.count++
@@ -54,6 +73,7 @@ app.use('*', async (c, next) => {
   const isAuthorizedE2E = E2E_SECRET && e2eSecret === E2E_SECRET
 
   if (botPatterns.some(p => p.test(ua)) && !isAuthorizedE2E && !isLocal) {
+    logger.warn('Bot traffic blocked', { ...getLogContext(c), userAgent: ua })
     return c.json({ error: 'Bot traffic detected' }, 403)
   }
   await next()
@@ -101,7 +121,7 @@ const docClient = DynamoDBDocumentClient.from(client)
 // Alerting target initialization check
 const webhookUrl = process.env.DISCORD_WEBHOOK_URL
 if (!webhookUrl) {
-  console.warn('WARNING: DISCORD_WEBHOOK_URL environment variable is missing. Unhandled service errors will fail to trigger Discord alerting.')
+  logger.warn('WARNING: DISCORD_WEBHOOK_URL environment variable is missing. Unhandled service errors will fail to trigger Discord alerting.')
 }
 
 // Root endpoint for health check
@@ -165,13 +185,19 @@ app.post('/api/results', async (c) => {
 
     const response = await docClient.send(command)
 
+    logger.info('Archetype result recorded successfully', {
+      ...getLogContext(c),
+      archetypeId,
+      updatedCount: response.Attributes?.count || 1
+    })
+
     return c.json({
       success: true,
       archetypeId,
       updatedCount: response.Attributes?.count || 1
     })
   } catch (error: any) {
-    console.error('Error recording result:', error)
+    logger.error('Error recording result', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -229,7 +255,7 @@ app.get('/api/stats', async (c) => {
       stats
     })
   } catch (error: any) {
-    console.error('Error fetching stats:', error)
+    logger.error('Error fetching stats', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -267,13 +293,19 @@ app.post('/api/stats', async (c) => {
 
     const response = await docClient.send(command)
 
+    logger.info('Soul Drink result recorded successfully', {
+      ...getLogContext(c),
+      resultId,
+      newCount: response.Attributes?.count
+    })
+
     return c.json({
       success: true,
       result_id: resultId,
       new_count: response.Attributes?.count
     })
   } catch (error: any) {
-    console.error('Error updating Soul Drink stats:', error)
+    logger.error('Error updating Soul Drink stats', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -295,7 +327,7 @@ app.get('/api/stats/:id', async (c) => {
       count: response.Item?.count || 0
     })
   } catch (error: any) {
-    console.error('Error fetching Soul Drink stats:', error)
+    logger.error('Error fetching Soul Drink stats', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -341,6 +373,13 @@ app.post('/api/audit/verdict', async (c) => {
       },
     }))
 
+    logger.info('Audit verdict calculated and saved successfully', {
+      ...getLogContext(c),
+      verdictId,
+      archetype: verdictBase.archetype,
+      isSecret: verdictBase.isSecret
+    })
+
     return c.json({
       success: true,
       verdictId,
@@ -350,7 +389,7 @@ app.post('/api/audit/verdict', async (c) => {
       isSecret: verdictBase.isSecret
     })
   } catch (error: any) {
-    console.error('Error saving audit verdict:', error)
+    logger.error('Error saving audit verdict', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -370,7 +409,7 @@ app.get('/api/audit/verdict/:verdictId', async (c) => {
       isSecret: Item.is_secret,
     })
   } catch (error: any) {
-    console.error('Error fetching audit verdict:', error)
+    logger.error('Error fetching audit verdict', { ...getLogContext(c), error: error.message, stack: error.stack })
     return c.json({ error: 'Internal Server Error' }, 500)
   }
 })
@@ -379,7 +418,7 @@ app.get('/api/audit/verdict/:verdictId', async (c) => {
 app.post('/api/audit/impression', async (c) => {
   try {
     const body = await c.req.json()
-    console.log('AB impression:', JSON.stringify(body))
+    logger.info('AB impression logged', { ...getLogContext(c), impression: body })
   } catch {
     // Best-effort; ignore parse errors
   }
@@ -388,8 +427,8 @@ app.post('/api/audit/impression', async (c) => {
 
 // Global Error Handler with Discord Alerting (Sanitized & Correlated)
 app.onError(async (err, c) => {
-  const reqId = c.get('requestId') || 'N/A'
-  console.error(`[Request ID: ${reqId}] Unhandled Exception:`, err)
+  const logContext = getLogContext(c)
+  logger.error('Unhandled Exception occurred', { ...logContext, error: err.message, stack: err.stack })
 
   if (webhookUrl) {
     try {
@@ -399,9 +438,9 @@ app.onError(async (err, c) => {
           title: '🚨 Backend Service Error (500)',
           color: 16711680, // Hex: 0xff0000
           fields: [
-            { name: 'Request ID', value: reqId, inline: true },
-            { name: 'Method', value: c.req.method, inline: true },
-            { name: 'URL', value: c.req.url, inline: true },
+            { name: 'Request ID', value: logContext.requestId, inline: true },
+            { name: 'Method', value: logContext.method, inline: true },
+            { name: 'URL', value: logContext.url, inline: true },
             { name: 'Error Name', value: err.name || 'Error', inline: true },
             { name: 'Info', value: 'Detailed stack trace is logged securely in AWS CloudWatch logs.' }
           ],
@@ -414,10 +453,10 @@ app.onError(async (err, c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).catch(alertErr => {
-        console.error('Failed to dispatch Discord Alert:', alertErr)
+        logger.error('Failed to dispatch Discord Alert', { ...logContext, error: alertErr.message, stack: alertErr.stack })
       })
-    } catch (constructErr) {
-      console.error('Failed to construct Discord alert payload:', constructErr)
+    } catch (constructErr: any) {
+      logger.error('Failed to construct Discord alert payload', { ...logContext, error: constructErr.message, stack: constructErr.stack })
     }
   }
 
